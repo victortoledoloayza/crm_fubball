@@ -1,0 +1,23 @@
+/.env
+/vendor/
+.DS_Store
+
+# Etiquetas PDF subidas por usuarios — nunca van al repo.
+/uploads/
+# Archivos de entorno y credenciales
+.env
+.env.local
+.env.production
+
+# Bases de datos y volcados SQL
+*.sql
+*.sqlite
+
+# Archivos subidos por usuarios (etiquetas)
+uploads/etiquetas/*
+!uploads/etiquetas/.gitkeep
+
+# Logs y archivos temporales
+*.log
+.DS_Store
+Thumbs.db

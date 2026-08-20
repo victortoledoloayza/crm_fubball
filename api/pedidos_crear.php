@@ -1,0 +1,110 @@
+<?php
+/**
+ * api/pedidos_crear.php (POST, formulario estándar)
+ *
+ * Procesa pedidos_nuevo.php. `origen` siempre se guarda como 'manual'.
+ */
+
+require_once __DIR__ . '/../core/bootstrap.php';
+require_once __DIR__ . '/../core/pedidos/PedidoRepository.php';
+
+$usuarioSesion = Auth::requireLogin();
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: ' . baseUrl('pedidos_nuevo.php'));
+    exit;
+}
+
+csrfRequerir();
+
+$canalId = filter_input(INPUT_POST, 'canal_id', FILTER_VALIDATE_INT);
+$clienteNombre = trim($_POST['cliente_nombre'] ?? '');
+$clienteDni = trim($_POST['cliente_dni'] ?? '');
+$clienteTelefono = trim($_POST['cliente_telefono'] ?? '');
+$clienteEmail = trim($_POST['cliente_email'] ?? '');
+$clienteDireccion = trim($_POST['cliente_direccion'] ?? '');
+$fechaLimite = trim($_POST['fecha_limite'] ?? '');
+$metodoDespachoId = filter_input(INPUT_POST, 'metodo_despacho_id', FILTER_VALIDATE_INT);
+$requiereVerificarPago = isset($_POST['requiere_verificar_pago']);
+$itemsPost = $_POST['items'] ?? [];
+
+$errores = [];
+
+if (!$canalId) {
+    $errores[] = 'Selecciona un canal.';
+}
+if ($clienteNombre === '') {
+    $errores[] = 'El nombre del cliente es obligatorio.';
+}
+if ($fechaLimite === '') {
+    $errores[] = 'La fecha límite es obligatoria.';
+} else {
+    // El <input type="datetime-local"> manda "YYYY-MM-DDTHH:MM"; MySQL
+    // espera "YYYY-MM-DD HH:MM:SS".
+    $timestamp = strtotime($fechaLimite);
+    if ($timestamp === false) {
+        $errores[] = 'La fecha límite no es válida.';
+    } else {
+        $fechaLimite = date('Y-m-d H:i:s', $timestamp);
+    }
+}
+
+$items = [];
+foreach ($itemsPost as $item) {
+    $producto = trim($item['producto_nombre'] ?? '');
+    $cantidad = filter_var($item['cantidad'] ?? null, FILTER_VALIDATE_INT);
+    $precio = filter_var($item['precio_unitario'] ?? null, FILTER_VALIDATE_FLOAT);
+
+    // Filas vacías (el usuario agregó una fila de más y no la llenó) se
+    // ignoran en vez de rechazar todo el formulario.
+    if ($producto === '' && $cantidad === false && $precio === false) {
+        continue;
+    }
+
+    if ($producto === '' || !$cantidad || $cantidad < 1 || $precio === false || $precio < 0) {
+        $errores[] = 'Cada producto necesita nombre, cantidad (mínimo 1) y precio válidos.';
+        continue;
+    }
+
+    $items[] = [
+        'producto_nombre' => $producto,
+        'variante'        => trim($item['variante'] ?? ''),
+        'sku'              => trim($item['sku'] ?? ''),
+        'cantidad'         => $cantidad,
+        'precio_unitario'  => $precio,
+    ];
+}
+
+if (empty($items)) {
+    $errores[] = 'Agrega al menos un producto.';
+}
+
+if (!empty($errores)) {
+    header('Location: ' . baseUrl('pedidos_nuevo.php') . '?error=' . urlencode(implode(' ', $errores)));
+    exit;
+}
+
+try {
+    $pedidoId = PedidoRepository::crear([
+        'canal_id'                => $canalId,
+        'cliente_nombre'          => $clienteNombre,
+        'cliente_dni'              => $clienteDni,
+        'cliente_telefono'         => $clienteTelefono,
+        'cliente_email'            => $clienteEmail,
+        'cliente_direccion'        => $clienteDireccion,
+        'fecha_limite'             => $fechaLimite,
+        'metodo_despacho_id'       => $metodoDespachoId ?: null,
+        'requiere_verificar_pago'  => $requiereVerificarPago,
+        'origen'                   => 'manual',
+        'usuario_creador_id'       => (int) $usuarioSesion['id'],
+        'items'                    => $items,
+    ]);
+
+    error_log("[pedidos_crear.php] Pedido id={$pedidoId} creado manualmente por usuario id={$usuarioSesion['id']}");
+    header('Location: ' . baseUrl('pedidos.php') . '?ok=creado');
+    exit;
+} catch (Throwable $e) {
+    error_log('[pedidos_crear.php] Error al crear pedido: ' . $e->getMessage());
+    header('Location: ' . baseUrl('pedidos_nuevo.php') . '?error=' . urlencode('Ocurrió un error al guardar el pedido.'));
+    exit;
+}

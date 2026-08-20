@@ -1,0 +1,13 @@
+# Proteger archivos .env, .sql, .jsonl, .git, etc.
+<FilesMatch "(\.env|\.sql|\.jsonl|\.git|\.md)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Evitar listado de directorios
+Options -Indexes

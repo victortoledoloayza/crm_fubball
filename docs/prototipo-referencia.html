@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fubball KDS — Prototipo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sidebar-bg:#161c2b;
+    --sidebar-bg-active:#232a40;
+    --sidebar-text:#9aa2b8;
+    --bg:#f2f3f7;
+    --card-bg:#ffffff;
+    --border:#e5e7ee;
+    --text:#1c2233;
+    --text-muted:#6b7280;
+    --red:#d6483d;
+    --red-dark:#b8392f;
+    --green:#2fae66;
+    --yellow:#e8a52a;
+    --yellow-text:#92660a;
+    --radius:12px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);}
+  .app{display:flex;min-height:100vh;}
+
+  /* SIDEBAR */
+  .sidebar{width:236px;background:var(--sidebar-bg);color:var(--sidebar-text);flex-shrink:0;display:flex;flex-direction:column;padding:18px 0 12px;}
+  .brand{display:flex;align-items:center;gap:9px;padding:0 20px 16px;font-weight:800;font-size:1.05rem;color:#fff;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:10px;}
+  .brand b{color:var(--red);}
+  .nav-group-label{font-size:.66rem;text-transform:uppercase;letter-spacing:.08em;color:#5c6480;padding:14px 20px 6px;font-weight:700;}
+  .nav-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:none;border-left:3px solid transparent;color:var(--sidebar-text);padding:10px 17px;font-size:.87rem;cursor:pointer;font-family:inherit;}
+  .nav-item .ic{width:18px;text-align:center;font-size:.95rem;}
+  .nav-item .lbl{flex:1;}
+  .nav-item:hover{background:var(--sidebar-bg-active);color:#fff;}
+  .nav-item.active{background:var(--sidebar-bg-active);color:#fff;border-left-color:var(--red);}
+  .nav-item.disabled{opacity:.4;cursor:not-allowed;}
+  .nav-item.disabled:hover{background:none;color:var(--sidebar-text);}
+  .nav-badge{background:var(--red);color:#fff;font-size:.66rem;font-weight:700;border-radius:20px;padding:1px 7px;min-width:16px;text-align:center;}
+  .nav-badge.zero{display:none;}
+  .soon{font-size:.58rem;background:#333c54;color:#aab1c8;padding:2px 6px;border-radius:6px;font-weight:700;}
+
+  /* MAIN */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0;}
+  .topbar{height:64px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 26px;flex-wrap:wrap;gap:8px;}
+  .topbar-title{font-size:1.08rem;font-weight:800;}
+  .topbar-sub{font-size:.75rem;color:var(--text-muted);font-weight:500;margin-top:1px;}
+  .topbar-actions{display:flex;align-items:center;gap:10px;}
+  .clock-chip{display:flex;align-items:center;gap:8px;background:#f2f3f7;border:1px solid var(--border);padding:6px 8px 6px 12px;border-radius:20px;font-size:.8rem;font-weight:700;}
+  .clock-chip button{border:none;background:var(--text);color:#fff;border-radius:12px;font-size:.68rem;padding:4px 9px;cursor:pointer;font-weight:700;}
+  .icon-btn{background:#f2f3f7;border:1px solid var(--border);width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:1rem;}
+  .icon-btn.off{opacity:.3;}
+  .reset-btn{border:1px solid var(--border);background:#fff;color:var(--text-muted);border-radius:20px;padding:7px 12px;font-size:.75rem;font-weight:700;cursor:pointer;}
+  .avatar{width:36px;height:36px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.75rem;flex-shrink:0;}
+
+  .content{flex:1;padding:24px 28px 60px;overflow-y:auto;}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;animation:fade .2s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+  .section-sub{color:var(--text-muted);font-size:.85rem;margin:-6px 0 20px;max-width:640px;}
+
+  /* PANEL */
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:26px;}
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:12px;}
+  .section-label{font-weight:800;font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin:0 0 10px;}
+  .stat-card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;border-top:3px solid var(--text);}
+  .stat-card.c-green{border-top-color:var(--green);}
+  .stat-card.c-yellow{border-top-color:var(--yellow);}
+  .stat-card.c-red{border-top-color:var(--red);}
+  .stat-card .num{font-size:1.85rem;font-weight:800;line-height:1;}
+  .stat-card .lbl{color:var(--text-muted);font-size:.78rem;font-weight:600;margin-top:6px;}
+
+  .legend{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:6px 22px;margin-bottom:22px;}
+  .legend-step{display:flex;gap:16px;padding:16px 0;border-bottom:1px solid var(--border);}
+  .legend-step:last-child{border-bottom:none;}
+  .legend-num{width:30px;height:30px;border-radius:50%;background:#f2f3f7;color:var(--text);font-weight:800;font-size:.85rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .legend-title{font-weight:700;font-size:.9rem;margin-bottom:2px;}
+  .legend-text{color:var(--text-muted);font-size:.82rem;}
+
+  .quick-actions{display:flex;gap:10px;flex-wrap:wrap;}
+
+  /* CHARTS */
+  .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px;}
+  @media(max-width:760px){.charts-grid{grid-template-columns:1fr;}}
+  .chart-card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;}
+  .chart-title{font-weight:700;font-size:.85rem;margin-bottom:14px;}
+  .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .bar-row:last-child{margin-bottom:0;}
+  .bar-label{width:128px;flex-shrink:0;font-size:.74rem;color:var(--text-muted);font-weight:600;line-height:1.2;}
+  .bar-track{flex:1;background:#eef0f4;border-radius:20px;height:14px;overflow:hidden;}
+  .bar-fill{height:100%;border-radius:20px;transition:width .3s ease;}
+  .bar-count{width:20px;text-align:right;font-size:.78rem;font-weight:700;}
+  .donut-wrap{display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+  .donut-legend{display:flex;flex-direction:column;gap:8px;}
+  .donut-legend-item{font-size:.78rem;color:var(--text);font-weight:600;display:flex;align-items:center;gap:6px;}
+  .donut-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+
+  /* BUTTONS */
+  .btn{border:none;border-radius:9px;padding:9px 14px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;}
+  .btn-outline{background:#f2f3f7;color:var(--text);}
+  .btn-outline:hover{background:#e7e9f0;}
+  .btn-primary{background:var(--red);color:#fff;}
+  .btn-primary:hover{background:var(--red-dark);}
+  .btn-dark{background:var(--text);color:#fff;}
+
+  /* FILTERS */
+  .filters{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;}
+  .chip{border:1px solid var(--border);background:#fff;padding:6px 14px;border-radius:20px;font-size:.8rem;font-weight:700;cursor:pointer;color:var(--text-muted);}
+  .chip.active{background:var(--text);color:#fff;border-color:var(--text);}
+
+  /* KANBAN */
+  .board{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start;}
+  @media(max-width:1050px){.board{grid-template-columns:1fr 1fr;}}
+  @media(max-width:700px){.board{grid-template-columns:1fr;}}
+  .column{background:#e9eaf0;border-radius:14px;padding:14px;min-height:160px;}
+  .column-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-weight:800;font-size:.87rem;padding:0 4px;}
+  .column-count{background:#fff;border-radius:20px;padding:1px 9px;font-size:.72rem;font-weight:700;}
+  .cards{display:flex;flex-direction:column;gap:12px;}
+
+  .ticket{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.05);border:1px solid var(--border);}
+  .ticket-sla{height:5px;}
+  .ticket-sla.green{background:var(--green);}
+  .ticket-sla.yellow{background:var(--yellow);}
+  .ticket-sla.red{background:var(--red);}
+  .ticket-body{padding:13px 15px;}
+  .ticket-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;gap:8px;}
+  .channel-badge{font-size:.64rem;font-weight:800;color:#fff;padding:3px 9px;border-radius:6px;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;}
+  .ticket-id{font-size:.7rem;color:var(--text-muted);font-weight:700;white-space:nowrap;text-decoration:none;border-bottom:1px dashed var(--text-muted);}
+  .ticket-id:hover{color:var(--text);border-bottom-color:var(--text);}
+
+  /* Miniaturas de producto (foto real de fubball.com) */
+  .ticket-product-row{display:flex;gap:10px;align-items:flex-start;margin-bottom:9px;}
+  .ticket-product-info{flex:1;min-width:0;}
+  .item-thumb{display:inline-flex;align-items:center;justify-content:center;border-radius:10px;flex-shrink:0;overflow:hidden;position:relative;}
+  .item-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .item-thumbs-stack{display:flex;align-items:center;flex-shrink:0;}
+  .item-thumbs-stack .item-thumb{margin-left:-10px;border:2px solid #fff;border-radius:8px;}
+  .item-thumbs-stack .item-thumb:first-child{margin-left:0;}
+  .item-thumb.more{background:#e5e7ee;color:var(--text-muted);font-size:.62rem;font-weight:800;}
+  .detail-link{background:none;border:none;padding:0;margin-top:3px;color:var(--red);font-size:.76rem;font-weight:700;cursor:pointer;text-decoration:underline;font-family:inherit;}
+  .detail-link:hover{color:var(--red-dark);}
+
+  .ticket-product{font-weight:800;font-size:.92rem;margin-bottom:1px;}
+  .ticket-variant{color:var(--text-muted);font-size:.78rem;margin-bottom:0;}
+  .ticket-flag{display:inline-block;background:#fff2df;color:#9a6408;font-size:.68rem;font-weight:800;padding:3px 8px;border-radius:6px;margin-bottom:9px;}
+  .resp-trail{font-size:.72rem;color:var(--text-muted);font-weight:600;margin-bottom:8px;}
+  .ticket-deadline{font-size:.76rem;font-weight:800;display:flex;align-items:center;gap:5px;margin-bottom:10px;}
+  .ticket-deadline.green{color:var(--green);}
+  .ticket-deadline.yellow{color:var(--yellow-text);}
+  .ticket-deadline.red{color:var(--red);}
+  .resp-select-row{margin-bottom:10px;}
+  .resp-select-label{display:block;font-size:.66rem;color:var(--text-muted);font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:.03em;}
+  .resp-select{width:100%;padding:7px 8px;border:1px solid var(--border);border-radius:8px;font-size:.78rem;font-family:inherit;background:#fff;color:var(--text);}
+  .ticket-actions{display:flex;gap:7px;}
+  .ticket-actions .btn-primary{flex:1;}
+  .empty{text-align:center;color:var(--text-muted);padding:26px 10px;font-size:.82rem;}
+
+  /* MODAL DE DETALLE DE PEDIDO */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,18,30,.55);z-index:1000;align-items:center;justify-content:center;padding:20px;}
+  .modal-overlay.open{display:flex;}
+  .modal-card{background:#fff;border-radius:16px;max-width:420px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 20px 50px rgba(0,0,0,.25);}
+  .modal-header{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--border);position:sticky;top:0;background:#fff;}
+  .modal-header h3{margin:0;font-size:.95rem;}
+  .modal-close{background:#f2f3f7;border:none;width:28px;height:28px;border-radius:50%;font-size:1rem;cursor:pointer;color:var(--text-muted);}
+  .modal-body{padding:8px 18px 18px;}
+  .modal-item-row{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);}
+  .modal-item-row:last-child{border-bottom:none;}
+  .modal-item-info{flex:1;min-width:0;}
+  .modal-item-name{font-weight:700;font-size:.86rem;}
+  .modal-item-meta{color:var(--text-muted);font-size:.78rem;margin-top:2px;}
+  .modal-item-qty{font-weight:800;font-size:.85rem;background:#f2f3f7;border-radius:8px;padding:4px 10px;flex-shrink:0;}
+
+  /* TABLE */
+  .table-wrap{background:#fff;border:1px solid var(--border);border-radius:14px;overflow:auto;}
+  table{width:100%;border-collapse:collapse;font-size:.83rem;min-width:760px;}
+  th{text-align:left;background:#f7f8fa;padding:11px 14px;font-size:.68rem;text-transform:uppercase;color:var(--text-muted);letter-spacing:.04em;border-bottom:1px solid var(--border);white-space:nowrap;}
+  td{padding:11px 14px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  .row-actions{display:flex;gap:6px;white-space:nowrap;}
+  .amount{font-weight:700;}
+
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+  .method-badge{display:inline-flex;align-items:center;gap:4px;font-size:.72rem;font-weight:700;color:#fff;padding:4px 10px;border-radius:6px;white-space:nowrap;}
+
+  /* TSI TEMPLATE */
+  .tsi-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:20px;align-items:start;}
+  @media(max-width:900px){.tsi-grid{grid-template-columns:1fr;}}
+  .panel-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:20px;}
+  .panel-card h3{margin:0 0 6px;font-size:.95rem;}
+  .panel-card p{color:var(--text-muted);font-size:.82rem;margin:0 0 14px;}
+  .col-chip{display:inline-block;background:#f2f3f7;border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:.74rem;font-weight:700;margin:3px 4px 0 0;font-family:monospace;}
+
+  /* EXTENSION MOCKUP */
+  .mockup-frame{border:1px solid var(--border);border-radius:14px;overflow:hidden;max-width:620px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  .mockup-bar{background:#e3e5ec;padding:9px 14px;font-size:.72rem;color:var(--text-muted);font-weight:700;display:flex;align-items:center;gap:8px;}
+  .mockup-dot{width:9px;height:9px;border-radius:50%;background:#c7c9d4;}
+  .mockup-body{padding:22px;position:relative;}
+  .mp-row{display:flex;gap:16px;padding:9px 0;border-bottom:1px dashed var(--border);font-size:.85rem;}
+  .mp-row:last-of-type{border-bottom:none;}
+  .mp-label{color:var(--text-muted);width:150px;flex-shrink:0;font-size:.78rem;font-weight:600;}
+  .mp-val{font-weight:700;}
+  .floating-capture{margin-top:18px;background:var(--red);color:#fff;border:none;border-radius:10px;padding:12px 18px;font-size:.85rem;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;box-shadow:0 6px 14px rgba(214,72,61,.35);}
+  .floating-capture:hover{background:var(--red-dark);}
+  .floating-capture:disabled{background:var(--green);cursor:default;box-shadow:none;}
+
+  /* TOAST */
+  #toast{position:fixed;bottom:22px;right:22px;display:flex;flex-direction:column;gap:8px;z-index:999;max-width:320px;}
+  .toast-item{background:#1c2233;color:#fff;padding:12px 16px;border-radius:10px;font-size:.82rem;font-weight:600;box-shadow:0 6px 16px rgba(0,0,0,.25);animation:toastIn .2s ease;}
+  @keyframes toastIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">⚽ <span>Fubball <b>KDS</b></span></div>
+    <nav>
+      <div class="nav-group-label">Principal</div>
+      <button class="nav-item active" data-tab="panel"><span class="ic">🏠</span><span class="lbl">Panel</span></button>
+      <div class="nav-group-label">Operaciones</div>
+      <button class="nav-item" data-tab="kds"><span class="ic">🎫</span><span class="lbl">Tablero KDS</span><span class="nav-badge" id="badgeNuevos">0</span></button>
+      <button class="nav-item" data-tab="despacho"><span class="ic">🚚</span><span class="lbl">Cola de Despacho</span><span class="nav-badge" id="badgeDespacho">0</span></button>
+      <button class="nav-item" data-tab="facturacion"><span class="ic">🧾</span><span class="lbl">Cola de Facturación</span><span class="nav-badge" id="badgeFact">0</span></button>
+      <div class="nav-group-label">Herramientas</div>
+      <button class="nav-item" data-tab="tsi"><span class="ic">🔗</span><span class="lbl">Asistente TSI</span></button>
+      <button class="nav-item" data-tab="extension"><span class="ic">🧩</span><span class="lbl">Simulador Extensión</span></button>
+      <div class="nav-group-label">Administración</div>
+      <button class="nav-item disabled"><span class="ic">👥</span><span class="lbl">Usuarios y roles</span><span class="soon">Fase 2</span></button>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div>
+        <div class="topbar-title" id="topbarTitle">Panel</div>
+        <div class="topbar-sub" id="topbarSub">Resumen operativo del día</div>
+      </div>
+      <div class="topbar-actions">
+        <div class="clock-chip">🕐 <span id="clockLabel">—</span><button id="advanceBtn">+1h (demo)</button></div>
+        <button class="icon-btn" id="soundToggle" title="Alertas de sonido">🔔</button>
+        <button class="reset-btn" id="resetBtn">🔄 Reiniciar demo</button>
+        <div class="avatar">FB</div>
+      </div>
+    </header>
+
+    <main class="content">
+
+      <!-- PANEL -->
+      <section class="tab-panel active" id="tab-panel">
+        <div class="section-sub">Vista general de pedidos en curso. Este prototipo simula datos en memoria — nada se guarda en un servidor todavía.</div>
+        <div class="stats-grid" id="statsGrid"></div>
+
+        <div class="section-label">KPIs de trazabilidad y eficiencia (últimos 30 días)</div>
+        <div class="kpi-grid" id="kpiGrid"></div>
+
+        <div class="charts-grid">
+          <div class="chart-card">
+            <div class="chart-title">Pedidos activos por canal</div>
+            <div id="chartCanal"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Estado de SLA (Nuevos + Embalando)</div>
+            <div id="chartSla"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Método de entrega (30 días)</div>
+            <div id="chartMetodo"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Resultado del despacho (30 días)</div>
+            <div id="chartResultado"></div>
+          </div>
+        </div>
+
+        <div class="quick-actions">
+          <button class="btn btn-primary" onclick="switchTab('kds')">🎫 Ir al Tablero KDS</button>
+          <button class="btn btn-outline" onclick="simularNuevoPedido()">🔔 Simular pedido nuevo</button>
+          <button class="btn btn-outline" onclick="switchTab('extension')">🧩 Probar botón de la extensión</button>
+        </div>
+      </section>
+
+      <!-- KDS -->
+      <section class="tab-panel" id="tab-kds">
+        <div class="section-sub">Flujo: Nuevo → Embalando → Verificación → Despacho → Facturación. Cada cambio de fase requiere elegir un responsable. El semáforo (🟢🟡🔴) se calcula contra la hora límite de despacho. El número de orden (#) es un link directo a la etiqueta PDF.</div>
+        <div class="filters" id="channelFilters"></div>
+        <div class="board">
+          <div class="column">
+            <div class="column-header"><span>🆕 Nuevos</span><span class="column-count" id="countNuevos">0</span></div>
+            <div class="cards" id="colNuevos"></div>
+          </div>
+          <div class="column">
+            <div class="column-header"><span>📦 Embalando</span><span class="column-count" id="countEmbalando">0</span></div>
+            <div class="cards" id="colEmbalando"></div>
+          </div>
+          <div class="column">
+            <div class="column-header"><span>🔍 Verificación</span><span class="column-count" id="countVerificacion">0</span></div>
+            <div class="cards" id="colVerificacion"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- DESPACHO -->
+      <section class="tab-panel" id="tab-despacho">
+        <div class="section-sub">Pedidos ya verificados, esperando salir físicamente: delivery en moto, recojo del cliente en tienda, envío por agencia a provincia, o entrega en el punto de acopio del marketplace (Falabella / Ripley / Intercorp). Al confirmar la entrega, el pedido pasa a Facturación.</div>
+        <div class="toolbar">
+          <div style="font-weight:700;font-size:.85rem;" id="despachoCount">0 pedidos por despachar</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Orden</th><th>Canal</th><th>Cliente</th><th>Dirección</th><th>Método</th><th>Responsable</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <tbody id="despachoBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- FACTURACIÓN -->
+      <section class="tab-panel" id="tab-facturacion">
+        <div class="section-sub">Pedidos ya despachados y entregados, esperando su boleta/factura en TSI. Copia los datos de uno o exporta el lote completo del día.</div>
+        <div class="toolbar">
+          <div style="font-weight:700;font-size:.85rem;" id="factCount">0 pedidos por facturar</div>
+          <button class="btn btn-dark" onclick="exportarCSV()">⬇️ Exportar Excel/CSV del día</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Orden</th><th>Canal</th><th>Cliente</th><th>DNI</th><th>Dirección</th><th>Monto</th><th>Límite</th><th>Responsables</th><th>Acciones</th></tr></thead>
+            <tbody id="factBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TSI -->
+      <section class="tab-panel" id="tab-tsi">
+        <div class="section-sub">Mientras TSI no tenga API abierta, este módulo evita la triple digitación: genera el archivo con las columnas exactas y copia cada pedido listo para pegar.</div>
+        <div class="tsi-grid">
+          <div class="panel-card">
+            <h3>Plantilla de importación TSI</h3>
+            <p>Estas son las columnas que exportamos hoy. Sirven también como base para pedirle al proveedor de TSI que active la carga masiva.</p>
+            <div>
+              <span class="col-chip">Nombre</span><span class="col-chip">DNI</span><span class="col-chip">Dirección</span>
+              <span class="col-chip">Producto</span><span class="col-chip">SKU</span><span class="col-chip">Cantidad</span>
+              <span class="col-chip">Precio</span><span class="col-chip">Canal</span><span class="col-chip">N° Orden</span>
+            </div>
+            <div style="margin-top:16px;">
+              <button class="btn btn-dark" onclick="exportarCSV()">⬇️ Generar archivo TSI de hoy</button>
+            </div>
+          </div>
+          <div class="panel-card">
+            <h3>Modo asistido (mientras se convive con TSI manual)</h3>
+            <p>Para digitar boleta por boleta: entra a la Cola de Facturación, pulsa "📋 Copiar" en el pedido y pega directo en TSI — sin buscar en fotos ni en WhatsApp.</p>
+            <button class="btn btn-outline" onclick="switchTab('facturacion')">🧾 Ir a Cola de Facturación</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- EXTENSION SIMULATOR -->
+      <section class="tab-panel" id="tab-extension">
+        <div class="section-sub">Así se vería el botón flotante que la extensión de Chrome inyecta dentro de Falabella Seller Center / Ripley / Intercorp. Esto es una simulación de esa pantalla — al presionar el botón, el pedido entra al Tablero KDS igual que lo haría en producción.</div>
+        <div class="mockup-frame">
+          <div class="mockup-bar"><span class="mockup-dot"></span><span class="mockup-dot"></span><span class="mockup-dot"></span>&nbsp; sellercenter.falabella.com/orden/9981205530 (simulación)</div>
+          <div class="mockup-body">
+            <div class="mp-row"><div class="mp-label">N° de orden</div><div class="mp-val">9981205530</div></div>
+            <div class="mp-row"><div class="mp-label">Cliente</div><div class="mp-val">Ana Belén Rojas Farfán</div></div>
+            <div class="mp-row"><div class="mp-label">Producto</div><div class="mp-val">Chimpunes Fubball Pro X — Talla 41</div></div>
+            <div class="mp-row"><div class="mp-label">SKU</div><div class="mp-val">CHI-PROX-41</div></div>
+            <div class="mp-row"><div class="mp-label">Límite de despacho</div><div class="mp-val">Hoy, 4 horas desde ahora</div></div>
+            <button class="floating-capture" id="captureBtn" onclick="capturarDesdeExtension()">📥 Enviar a Despacho Fubball</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div class="modal-overlay" id="detailModalOverlay" onclick="if(event.target===this) cerrarDetalle()">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 id="detailModalTitle">Detalle del pedido</h3>
+      <button class="modal-close" onclick="cerrarDetalle()" title="Cerrar">✕</button>
+    </div>
+    <div class="modal-body" id="detailModalBody"></div>
+  </div>
+</div>
+
+<script>
+/* ---------- ESTADO ---------- */
+const channelMeta = {
+  FALABELLA:{label:'Falabella', color:'#4ab0a3'},
+  RIPLEY:{label:'Ripley', color:'#e01f3d'},
+  SHOPIFY:{label:'Shopify Web', color:'#7ab55c'},
+  INTERCORP:{label:'Intercorp', color:'#f39c2f'},
+  WHATSAPP:{label:'WhatsApp/Meta', color:'#25d366'}
+};
+
+const deliveryMeta = {
+  moto_delivery:{label:'🛵 Delivery (motorizado)', color:'#4a7cf6'},
+  recojo_tienda:{label:'🏬 Recojo en tienda', color:'#8b5cf6'},
+  envio_provincia:{label:'📦 Envío a provincia (agencia)', color:'#f39c2f'},
+  punto_acopio:{label:'📍 Punto de acopio marketplace', color:'#0ea5e9'}
+};
+
+// Empleados que pueden asignarse como responsables en cada fase (Embalar /
+// Verificar / Despacho). En producción esto vendría de la lista real de
+// personal de Fubball; aquí es solo un pool fijo para la demo.
+const employeePool = ['Luke Torres','Ana Gómez','Diego Herrera','Karla Rojas','Pedro Salinas','Mariana Cruz'];
+
+function nuevoResponsables(){
+  return {embalaje:null, verificacion:null, despacho:null};
+}
+
+function createInitialOrders(){
+  return [
+    {id:'FAL-3248644661', channel:'FALABELLA',
+      items:[{product:'Guantes Súper Héroe', variant:'Talla 4 / Rojo', sku:'GSH-T4-ROJ', qty:1}],
+      customer:'Marco Quispe Huamán', dni:'45872231', address:'Av. Los Álamos 245, San Juan de Lurigancho', amount:79.90,
+      deadline:new Date('2026-08-17T12:30:00'), status:'nuevo', flag:null, deliveryMethod:'punto_acopio',
+      createdAt:new Date('2026-08-17T08:05:00'), resultado:null, tiempoDespachoMinutos:null, responsables:nuevoResponsables(), motorizadoCoordinado:false},
+    {id:'RIP-7917138901-A', channel:'RIPLEY',
+      items:[{product:'Silbato Fox 40', variant:'Color Rojo', sku:'SF40-ROJ', qty:1}],
+      customer:'Daniela Torres Cabrera', dni:'71029384', address:'Jr. Las Camelias 118, Surco', amount:45.00,
+      deadline:new Date('2026-08-17T18:00:00'), status:'nuevo', flag:null, deliveryMethod:'punto_acopio',
+      createdAt:new Date('2026-08-17T07:40:00'), resultado:null, tiempoDespachoMinutos:null, responsables:nuevoResponsables(), motorizadoCoordinado:false},
+    {id:'SHO-1042', channel:'SHOPIFY',
+      items:[
+        {product:'Raqueta Fubball Alu All #23', variant:'Estándar', sku:'RAQ-ALU-23', qty:1},
+        {product:'Grip Repuesto Raqueta', variant:'Negro', sku:'GRIP-NEG', qty:2}
+      ],
+      customer:'Renzo Alva Delgado', dni:'46215879', address:'Calle Las Orquídeas 502, Miraflores', amount:189.90,
+      deadline:new Date('2026-08-19T18:00:00'), status:'nuevo', flag:null, deliveryMethod:'moto_delivery',
+      createdAt:new Date('2026-08-17T09:10:00'), resultado:null, tiempoDespachoMinutos:null, responsables:nuevoResponsables(), motorizadoCoordinado:false},
+    {id:'INT-5563', channel:'INTERCORP',
+      items:[{product:'Balón Futsal N°4', variant:'Blanco/Negro', sku:'BAL-F4-BN', qty:1}],
+      customer:'Carla Ríos Mendoza', dni:'40233187', address:'Av. Angamos 1450, Surquillo', amount:59.90,
+      deadline:new Date('2026-08-17T11:00:00'), status:'embalando', flag:null, deliveryMethod:'envio_provincia',
+      createdAt:new Date('2026-08-17T06:50:00'), resultado:null, tiempoDespachoMinutos:null,
+      responsables:{embalaje:'Ana Gómez', verificacion:null, despacho:null}, motorizadoCoordinado:false},
+    {id:'RIP-4471', channel:'RIPLEY',
+      items:[{product:'Guantes Portero Elite', variant:'Talla 8 / Negro', sku:'GPE-T8-NEG', qty:1}],
+      customer:'Fernando Salazar Quiroz', dni:'42198765', address:'Av. La Marina 800, San Miguel', amount:129.90,
+      deadline:new Date('2026-08-17T13:00:00'), status:'verificacion', flag:null, deliveryMethod:'recojo_tienda',
+      createdAt:new Date('2026-08-17T07:15:00'), resultado:null, tiempoDespachoMinutos:null,
+      responsables:{embalaje:'Karla Rojas', verificacion:'Pedro Salinas', despacho:null}, motorizadoCoordinado:false},
+    {id:'WA-8821', channel:'WHATSAPP',
+      items:[
+        {product:'Casaca Retro Perú 98', variant:'Talla M', sku:'CAS-RETRO-M', qty:1},
+        {product:'Medias Fútbol Compresión', variant:'Talla M', sku:'MED-COMP-M', qty:1},
+        {product:'Muñequeras Deportivas', variant:'Pack x2', sku:'MUN-PACK2', qty:1}
+      ],
+      customer:'Jorge Salas Pinedo', dni:'44120056', address:'Av. Brasil 980, Pueblo Libre', amount:99.90,
+      deadline:new Date('2026-08-17T20:00:00'), status:'nuevo', flag:'pago', deliveryMethod:'moto_delivery',
+      createdAt:new Date('2026-08-17T09:35:00'), resultado:null, tiempoDespachoMinutos:null, responsables:nuevoResponsables(), motorizadoCoordinado:false},
+    {id:'SHO-2210', channel:'SHOPIFY',
+      items:[{product:'Zapatillas Running Fubball X', variant:'Talla 42', sku:'ZAP-RUN-42', qty:1}],
+      customer:'Patricia Núñez Alva', dni:'44567890', address:'Av. La Fontana 550, La Molina', amount:249.90,
+      deadline:new Date('2026-08-17T15:00:00'), status:'despacho', flag:null, deliveryMethod:'moto_delivery',
+      createdAt:new Date('2026-08-17T07:00:00'), resultado:null, tiempoDespachoMinutos:null,
+      responsables:{embalaje:'Diego Herrera', verificacion:'Mariana Cruz', despacho:'Luke Torres'}, motorizadoCoordinado:false},
+    {id:'FAL-8834', channel:'FALABELLA',
+      items:[{product:'Chimpunes Fubball Pro X', variant:'Talla 40', sku:'CHI-PROX-40', qty:1}],
+      customer:'Rodrigo Ibarra Cconislla', dni:'43219087', address:'Recojo en punto Falabella', amount:169.90,
+      deadline:new Date('2026-08-17T14:00:00'), status:'despacho', flag:null, deliveryMethod:'punto_acopio',
+      createdAt:new Date('2026-08-17T06:30:00'), resultado:null, tiempoDespachoMinutos:null,
+      responsables:{embalaje:'Karla Rojas', verificacion:'Ana Gómez', despacho:'Pedro Salinas'}, motorizadoCoordinado:false}
+  ];
+}
+
+// Genera ~60-90 pedidos ya facturados repartidos en los últimos 30 días,
+// solo para que los KPIs y gráficos de "últimos 30 días" tengan volumen
+// real que mostrar. No aparecen en el Tablero KDS (ya están 'facturado'),
+// solo alimentan el Panel.
+function generarHistorico(){
+  const productosHist = pool.concat([
+    {product:'Zapatillas Running Fubball X', variant:'Talla 40', sku:'ZAP-RUN-40', channel:'SHOPIFY'},
+    {product:'Pelota Vóley Pro', variant:'Oficial', sku:'PEL-VOL-PRO', channel:'FALABELLA'},
+    {product:'Muñequeras Deportivas', variant:'Pack x2', sku:'MUN-PACK2', channel:'RIPLEY'},
+    {product:'Rodilleras Vóley', variant:'Talla M', sku:'ROD-VOL-M', channel:'INTERCORP'},
+    {product:'Camiseta Selección Retro', variant:'Talla L', sku:'CAM-RETRO-L', channel:'WHATSAPP'}
+  ]);
+  const canales = Object.keys(channelMeta);
+  const metodos = Object.keys(deliveryMeta);
+  const historico = [];
+  let contador = 1;
+
+  for(let diasAtras = 1; diasAtras <= 30; diasAtras++){
+    // Más pedidos en los días recientes (última semana) que en el resto del mes.
+    const pedidosDelDia = diasAtras <= 7 ? (2 + Math.floor(Math.random()*3)) : (1 + Math.floor(Math.random()*2));
+    for(let i=0;i<pedidosDelDia;i++){
+      const canal = canales[Math.floor(Math.random()*canales.length)];
+      const metodo = metodos[Math.floor(Math.random()*metodos.length)];
+      const prod = productosHist[Math.floor(Math.random()*productosHist.length)];
+      const prefix = {FALABELLA:'FAL',RIPLEY:'RIP',SHOPIFY:'SHO',INTERCORP:'INT',WHATSAPP:'WA'}[canal];
+      const horaAleatoria = 8 + Math.floor(Math.random()*10);
+      const createdAt = new Date(simulatedNow.getTime() - diasAtras*86400000);
+      createdAt.setHours(horaAleatoria, Math.floor(Math.random()*60), 0, 0);
+      const exitoso = Math.random() > 0.13; // ~87% de éxito, para que "ocurrencias" tenga sentido
+      const tiempoDespachoMinutos = exitoso ? Math.round(35 + Math.random()*150) : Math.round(180 + Math.random()*260);
+
+      historico.push({
+        id: prefix+'-H'+String(contador++).padStart(3,'0'),
+        channel: canal,
+        items:[{product: prod.product, variant: prod.variant, sku: prod.sku, qty:1}],
+        customer: namePool[Math.floor(Math.random()*namePool.length)],
+        dni: String(40000000+Math.floor(Math.random()*9000000)),
+        address: 'Dirección de entrega', amount: Math.round((35+Math.random()*180)*100)/100,
+        deadline: new Date(createdAt.getTime() + (4+Math.random()*20)*3600000),
+        status: 'facturado', flag: null,
+        deliveryMethod: metodo,
+        createdAt,
+        resultado: exitoso ? 'exitoso' : 'observacion',
+        tiempoDespachoMinutos,
+        responsables: {embalaje:'—', verificacion:'—', despacho:'—'},
+        motorizadoCoordinado: true
+      });
+    }
+  }
+  return historico;
+}
+
+const pool = [
+  {product:'Chimpunes Fubball Pro X', variant:'Talla 42 / Negro', sku:'CHI-PROX-42', channel:'FALABELLA'},
+  {product:'Medias Fútbol Compresión', variant:'Talla M (3 pares)', sku:'MED-COMP-M', channel:'RIPLEY'},
+  {product:'Balón N°5 Matchball', variant:'Blanco/Azul', sku:'BAL-N5-BA', channel:'SHOPIFY'},
+  {product:'Guantes Portero Elite', variant:'Talla 8 / Negro', sku:'GPE-T8-NEG', channel:'INTERCORP'},
+  {product:'Polo Entrenamiento Dry', variant:'Talla L', sku:'POL-DRY-L', channel:'WHATSAPP'}
+];
+const namePool = ['Luis Fernández Soto','Katherine Vega Ponce','Aldo Ramírez Bazán','Milagros Chávez Ruiz','Sebastián Ortega León'];
+
+let simulatedNow = new Date('2026-08-17T10:00:00');
+let orders = createInitialOrders().concat(generarHistorico());
+let soundEnabled = true;
+let facturadosHoy = 0;
+let currentChannelFilter = 'ALL';
+let currentTab = 'panel';
+
+/* ---------- HELPERS ---------- */
+function startOfWeek(d){
+  const copy = new Date(d); copy.setHours(0,0,0,0);
+  const day = copy.getDay(); const diff = (day===0?6:day-1);
+  copy.setDate(copy.getDate()-diff);
+  return copy;
+}
+function startOfMonth(d){
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+function formatClock(d){
+  const day = d.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit'});
+  const time = d.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit',hour12:true});
+  return day+' · '+time;
+}
+function formatDeadlineDate(d){
+  const day = d.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit'});
+  const time = d.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit',hour12:true});
+  return day+' '+time;
+}
+function formatRemaining(diffH){
+  if(diffH>=24){const d=Math.floor(diffH/24); const h=Math.round(diffH-d*24); return d+'d '+h+'h';}
+  const h=Math.floor(diffH); const m=Math.round((diffH-h)*60);
+  return h>0 ? (h+'h '+m+'m') : (m+'m');
+}
+function slaInfo(o){
+  const diffMs = o.deadline - simulatedNow;
+  const diffH = diffMs/3600000;
+  if(diffH < 0) return {level:'red', text:'VENCIDO ⚠️'};
+  if(diffH < 2) return {level:'yellow', text: formatRemaining(diffH)+' restantes'};
+  return {level:'green', text: formatRemaining(diffH)+' restantes'};
+}
+function toast(msg){
+  const box = document.getElementById('toast');
+  const el = document.createElement('div');
+  el.className = 'toast-item';
+  el.textContent = msg;
+  box.appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity .3s'; setTimeout(()=>el.remove(),300); }, 3200);
+}
+function playBeep(){
+  if(!soundEnabled) return;
+  try{
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    o.type='sine'; o.frequency.value=880;
+    o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.0001,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.22,ctx.currentTime+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.3);
+    o.start(); o.stop(ctx.currentTime+0.32);
+  }catch(e){}
+}
+function playPrintSound(){
+  if(!soundEnabled) return;
+  try{
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    [0, 0.12].forEach((delay, i) => {
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.type = 'square'; o.frequency.value = i===0 ? 660 : 990;
+      o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(0.0001, ctx.currentTime+delay);
+      g.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime+delay+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+delay+0.12);
+      o.start(ctx.currentTime+delay); o.stop(ctx.currentTime+delay+0.14);
+    });
+  }catch(e){}
+}
+// Convención de nombre: sube cada etiqueta como {ID_DE_ORDEN}.pdf a esta carpeta.
+// Ej: la orden "FAL-3248644661" -> https://tlnegocios.com/fubball/etiquetas/FAL-3248644661.pdf
+function labelUrl(orderId){
+  return 'https://tlnegocios.com/fubball/etiquetas/'+orderId+'.pdf';
+}
+function copyText(text){
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(text).then(()=>toast('📋 Datos copiados al portapapeles')).catch(()=>fallbackCopy(text));
+  } else { fallbackCopy(text); }
+}
+function fallbackCopy(text){
+  const ta=document.createElement('textarea');
+  ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  try{ document.execCommand('copy'); toast('📋 Datos copiados al portapapeles'); }
+  catch(e){ toast('No se pudo copiar automáticamente'); }
+  document.body.removeChild(ta);
+}
+function downloadFile(filename, content){
+  const blob = new Blob([content], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ---------- RENDER: PANEL ---------- */
+function renderPanel(){
+  const nuevos = orders.filter(o=>o.status==='nuevo').length;
+  const embalando = orders.filter(o=>o.status==='embalando').length;
+  const factPend = orders.filter(o=>o.status==='facturacion_pendiente').length;
+  const urgentes = orders.filter(o=> (o.status==='nuevo'||o.status==='embalando') && slaInfo(o).level==='red').length;
+
+  const grid = document.getElementById('statsGrid');
+  grid.innerHTML =
+    statCard(nuevos,'Pedidos nuevos','') +
+    statCard(embalando,'En embalaje','') +
+    statCard(factPend,'Por facturar (TSI)','') +
+    statCard(urgentes,'Urgentes (SLA vencido/próximo)','c-red') +
+    statCard(facturadosHoy,'Facturados hoy (demo)','c-green');
+
+  renderKPIs();
+  renderChartCanal();
+  renderChartSla();
+  renderChartMetodo();
+  renderChartResultado();
+}
+function statCard(num,lbl,cls){
+  return '<div class="stat-card '+cls+'"><div class="num">'+num+'</div><div class="lbl">'+lbl+'</div></div>';
+}
+
+/* ---------- RENDER: KPIs DE TRAZABILIDAD ---------- */
+function renderKPIs(){
+  const hoyStr = simulatedNow.toDateString();
+  const inicioSemana = startOfWeek(simulatedNow);
+  const inicioMes = startOfMonth(simulatedNow);
+
+  const pedidosHoy = orders.filter(o=>o.createdAt && o.createdAt.toDateString()===hoyStr).length;
+  const pedidosSemana = orders.filter(o=>o.createdAt && o.createdAt>=inicioSemana).length;
+  const pedidosMes = orders.filter(o=>o.createdAt && o.createdAt>=inicioMes).length;
+
+  const completados = orders.filter(o=>o.status==='facturado');
+  const exitosos = completados.filter(o=>o.resultado==='exitoso').length;
+  const conObservacion = completados.filter(o=>o.resultado==='observacion').length;
+  const tasaExito = completados.length ? Math.round(exitosos/completados.length*100) : 0;
+  const tiempoPromedioMin = completados.length ? Math.round(completados.reduce((s,o)=>s+(o.tiempoDespachoMinutos||0),0)/completados.length) : 0;
+  const tiempoPromedioTxt = tiempoPromedioMin>=60 ? (Math.floor(tiempoPromedioMin/60)+'h '+(tiempoPromedioMin%60)+'m') : (tiempoPromedioMin+'m');
+
+  document.getElementById('kpiGrid').innerHTML =
+    statCard(pedidosHoy,'Pedidos hoy','') +
+    statCard(pedidosSemana,'Pedidos esta semana','') +
+    statCard(pedidosMes,'Pedidos este mes','') +
+    statCard(tasaExito+'%','Tasa de éxito','c-green') +
+    statCard(tiempoPromedioTxt,'Tiempo prom. de despacho','') +
+    statCard(conObservacion,'Ocurrencias (con observación)','c-red');
+}
+
+/* ---------- RENDER: GRÁFICOS ADICIONALES ---------- */
+function renderChartMetodo(){
+  const counts = {};
+  Object.keys(deliveryMeta).forEach(k=>counts[k]=0);
+  orders.forEach(o=>{ if(o.deliveryMethod && counts[o.deliveryMethod]!==undefined) counts[o.deliveryMethod]++; });
+  const max = Math.max(1, ...Object.values(counts));
+
+  document.getElementById('chartMetodo').innerHTML = Object.keys(deliveryMeta).map(k=>{
+    const meta = deliveryMeta[k];
+    const pct = Math.round(counts[k]/max*100);
+    return '<div class="bar-row">'+
+      '<span class="bar-label">'+meta.label+'</span>'+
+      '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:'+meta.color+'"></div></div>'+
+      '<span class="bar-count">'+counts[k]+'</span>'+
+    '</div>';
+  }).join('');
+}
+function renderChartResultado(){
+  const completados = orders.filter(o=>o.status==='facturado');
+  const exitosos = completados.filter(o=>o.resultado==='exitoso').length;
+  const observacion = completados.filter(o=>o.resultado==='observacion').length;
+  const total = completados.length;
+  const colors = {exitoso:'#2fae66', observacion:'#d6483d'};
+  const r=40, cx=50, cy=50, circumference=2*Math.PI*r;
+
+  let svgCircles = '<circle r="'+r+'" cx="'+cx+'" cy="'+cy+'" fill="transparent" stroke="#eef0f4" stroke-width="16" />';
+  if(total>0){
+    let offset=0;
+    [['exitoso',exitosos],['observacion',observacion]].forEach(par=>{
+      const key=par[0], count=par[1];
+      const frac = count/total; const len = frac*circumference;
+      if(len>0){
+        svgCircles += '<circle r="'+r+'" cx="'+cx+'" cy="'+cy+'" fill="transparent" stroke="'+colors[key]+'" stroke-width="16" stroke-dasharray="'+len+' '+(circumference-len)+'" stroke-dashoffset="'+(-offset)+'" />';
+      }
+      offset += len;
+    });
+  }
+  const svg = '<svg viewBox="0 0 100 100" width="110" height="110" style="transform:rotate(-90deg)">'+svgCircles+'</svg>';
+  const legend =
+    '<div class="donut-legend-item"><span class="donut-dot" style="background:'+colors.exitoso+'"></span>Exitoso: '+exitosos+'</div>'+
+    '<div class="donut-legend-item"><span class="donut-dot" style="background:'+colors.observacion+'"></span>Con observación: '+observacion+'</div>';
+  document.getElementById('chartResultado').innerHTML = '<div class="donut-wrap">'+svg+'<div class="donut-legend">'+legend+'</div></div>';
+}
+
+/* ---------- RENDER: GRÁFICOS DEL PANEL ---------- */
+function renderChartCanal(){
+  const activos = orders.filter(o=>o.status!=='facturado');
+  const counts = {};
+  Object.keys(channelMeta).forEach(c=>counts[c]=0);
+  activos.forEach(o=>{ if(counts[o.channel]!==undefined) counts[o.channel]++; });
+  const max = Math.max(1, ...Object.values(counts));
+
+  document.getElementById('chartCanal').innerHTML = Object.keys(channelMeta).map(c=>{
+    const meta = channelMeta[c];
+    const pct = Math.round((counts[c]/max)*100);
+    return '<div class="bar-row">'+
+      '<span class="bar-label">'+meta.label+'</span>'+
+      '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:'+meta.color+'"></div></div>'+
+      '<span class="bar-count">'+counts[c]+'</span>'+
+    '</div>';
+  }).join('');
+}
+function renderChartSla(){
+  const activos = orders.filter(o=>o.status==='nuevo'||o.status==='embalando');
+  const counts = {green:0, yellow:0, red:0};
+  activos.forEach(o=>{ counts[slaInfo(o).level]++; });
+  const total = activos.length;
+  const colors = {green:'#2fae66', yellow:'#e8a52a', red:'#d6483d'};
+  const labels = {green:'A tiempo', yellow:'Próximo al corte', red:'Urgente / vencido'};
+  const r = 40, cx = 50, cy = 50;
+  const circumference = 2*Math.PI*r;
+
+  let svgCircles = '<circle r="'+r+'" cx="'+cx+'" cy="'+cy+'" fill="transparent" stroke="#eef0f4" stroke-width="16" />';
+  if(total > 0){
+    let offset = 0;
+    svgCircles += ['green','yellow','red'].map(level=>{
+      const frac = counts[level]/total;
+      const len = frac*circumference;
+      const dash = len+' '+(circumference-len);
+      const dashoffset = -offset;
+      offset += len;
+      if(len<=0) return '';
+      return '<circle r="'+r+'" cx="'+cx+'" cy="'+cy+'" fill="transparent" stroke="'+colors[level]+'" stroke-width="16" stroke-dasharray="'+dash+'" stroke-dashoffset="'+dashoffset+'" stroke-linecap="butt" />';
+    }).join('');
+  }
+
+  const svg = '<svg viewBox="0 0 100 100" width="110" height="110" style="transform:rotate(-90deg)">'+svgCircles+'</svg>';
+  const legend = ['green','yellow','red'].map(level=>
+    '<div class="donut-legend-item"><span class="donut-dot" style="background:'+colors[level]+'"></span>'+labels[level]+': '+counts[level]+'</div>'
+  ).join('');
+
+  document.getElementById('chartSla').innerHTML = '<div class="donut-wrap">'+svg+'<div class="donut-legend">'+legend+'</div></div>';
+}
+
+/* ---------- RENDER: KDS ---------- */
+function renderFilters(){
+  const box = document.getElementById('channelFilters');
+  const channels = ['ALL','FALABELLA','RIPLEY','SHOPIFY','INTERCORP','WHATSAPP'];
+  box.innerHTML = channels.map(c=>{
+    const label = c==='ALL' ? 'Todos' : channelMeta[c].label;
+    const active = c===currentChannelFilter ? 'active' : '';
+    return '<button class="chip '+active+'" onclick="setChannelFilter(\''+c+'\')">'+label+'</button>';
+  }).join('');
+}
+function setChannelFilter(c){ currentChannelFilter = c; renderFilters(); renderKDS(); }
+
+// Fases del flujo de despacho: de qué estado a cuál, qué responsable se
+// pide en la transición, y el texto del botón/label del select.
+const FASES = {
+  nuevo:       {next:'embalando',    key:'embalaje',     label:'Embalar ➔',           selectLabel:'Responsable de embalaje'},
+  embalando:   {next:'verificacion', key:'verificacion', label:'Verificar ➔',         selectLabel:'Responsable de verificación'},
+  verificacion:{next:'despacho',     key:'despacho',     label:'✅ Enviar a Despacho', selectLabel:'Responsable de despacho'}
+};
+
+// Fotos reales de fubball.com. Como los productos de esta demo son datos
+// ficticios (no existen 1:1 en el catálogo real), se usa la foto de la
+// categoría/banda deportiva más cercana según palabras clave del nombre.
+// En producción, esto sería la imageUrl real de cada producto que ya trae
+// Shopify (la extensión ya la usa en el cotizador) — foto exacta del SKU.
+const CATEGORY_PHOTOS = {
+  futbol:       'https://fubball.com/cdn/shop/files/para_el_banner_principal_Vista_de_escritorio_1920_x_700_vista_movil_700_x_1200_13.png?v=1776893251&width=200',
+  basquet:      'https://fubball.com/cdn/shop/files/para_el_banner_principal_Vista_de_escritorio_1920_x_700_vista_movil_700_x_1200_16.png?v=1776893887&width=200',
+  tenis:        'https://fubball.com/cdn/shop/files/para_el_banner_principal_Vista_de_escritorio_1920_x_700_vista_movil_700_x_1200_11.png?v=1776892799&width=200',
+  box:          'https://fubball.com/cdn/shop/files/para_el_banner_principal_Vista_de_escritorio_1920_x_700_vista_movil_700_x_1200_10.png?v=1776892631&width=200',
+  natacion:     'https://fubball.com/cdn/shop/files/para_el_banner_principal_Vista_de_escritorio_1920_x_700_vista_movil_700_x_1200_9.png?v=1776892411&width=200',
+  voley:        'https://fubball.com/cdn/shop/files/para_el_banner_principal_Vista_de_escritorio_1920_x_700_vista_movil_700_x_1200_18.png?v=1776896489&width=200',
+  futsal:       'https://fubball.com/cdn/shop/files/para_el_banner_principal_Vista_de_escritorio_1920_x_700_vista_movil_700_x_1200_12.png?v=1776893077&width=200',
+  indumentaria: 'https://fubball.com/cdn/shop/files/TSI_3_4ebd6c7e-365e-4b7c-a994-f11ef1676eb4.png?v=1777496991&width=200'
+};
+function productImageUrl(name){
+  const n = (name||'').toLowerCase();
+  if(n.includes('futsal')) return CATEGORY_PHOTOS.futsal;
+  if(n.includes('raqueta')||n.includes('grip')) return CATEGORY_PHOTOS.tenis;
+  if(n.includes('boxeo')) return CATEGORY_PHOTOS.box;
+  if(n.includes('silbato')||n.includes('net')||n.includes('rodillera')||n.includes('vóley')||n.includes('voley')) return CATEGORY_PHOTOS.voley;
+  if(n.includes('natación')||n.includes('natacion')||n.includes('gorro')||n.includes('lente')) return CATEGORY_PHOTOS.natacion;
+  if(n.includes('básquet')||n.includes('basquet')||n.includes('baloncesto')) return CATEGORY_PHOTOS.basquet;
+  if(n.includes('casaca')||n.includes('camiseta')||n.includes('polo')||n.includes('chimpun')||n.includes('zapatilla')||n.includes('media')||n.includes('muñequera')||n.includes('munequera')) return CATEGORY_PHOTOS.indumentaria;
+  return CATEGORY_PHOTOS.futbol;
+}
+function itemThumbHTML(item, idx, size){
+  return '<span class="item-thumb" style="width:'+size+'px;height:'+size+'px;background:#eef0f4">'+
+    '<img src="'+productImageUrl(item.product)+'" alt="'+item.product+'" loading="lazy" onerror="this.style.display=\'none\'">'+
+  '</span>';
+}
+function itemsSectionHTML(o){
+  if(o.items.length===1){
+    const it = o.items[0];
+    return '<div class="ticket-product-row">'+
+      itemThumbHTML(it,0,58)+
+      '<div class="ticket-product-info">'+
+        '<div class="ticket-product">'+it.product+'</div>'+
+        '<div class="ticket-variant">'+it.variant+' · SKU '+it.sku+'</div>'+
+        '<button type="button" class="detail-link" onclick="abrirDetalle(\''+o.id+'\')">📋 Ver detalle para embalar</button>'+
+      '</div>'+
+    '</div>';
+  }
+  const thumbs = o.items.slice(0,3).map((it,i)=>itemThumbHTML(it,i,34)).join('');
+  const extra = o.items.length>3 ? '<span class="item-thumb more" style="width:34px;height:34px;">+'+(o.items.length-3)+'</span>' : '';
+  return '<div class="ticket-product-row">'+
+    '<div class="item-thumbs-stack">'+thumbs+extra+'</div>'+
+    '<div class="ticket-product-info">'+
+      '<div class="ticket-product">'+o.items.length+' productos</div>'+
+      '<button type="button" class="detail-link" onclick="abrirDetalle(\''+o.id+'\')">📋 Ver detalle para embalar</button>'+
+    '</div>'+
+  '</div>';
+}
+function responsablesResumenHTML(o){
+  const items = [];
+  if(o.responsables.embalaje) items.push('📦 '+o.responsables.embalaje);
+  if(o.responsables.verificacion) items.push('🔍 '+o.responsables.verificacion);
+  if(o.responsables.despacho) items.push('🚚 '+o.responsables.despacho);
+  if(!items.length) return '';
+  return '<div class="resp-trail">'+items.join(' · ')+'</div>';
+}
+function employeeSelectHTML(o, faseKey){
+  const opts = employeePool.map(n=>'<option value="'+n+'"'+(o.responsables[faseKey]===n?' selected':'')+'>'+n+'</option>').join('');
+  return '<select class="resp-select" id="sel-'+o.id+'"><option value="">— Selecciona —</option>'+opts+'</select>';
+}
+
+function ticketCardHTML(o){
+  const sla = slaInfo(o);
+  const meta = channelMeta[o.channel];
+  const fase = FASES[o.status];
+  return ''+
+  '<div class="ticket">'+
+    '<div class="ticket-sla '+sla.level+'"></div>'+
+    '<div class="ticket-body">'+
+      '<div class="ticket-top">'+
+        '<span class="channel-badge" style="background:'+meta.color+'">'+meta.label+'</span>'+
+        '<a class="ticket-id" href="'+labelUrl(o.id)+'" target="_blank" rel="noopener" title="Ver / descargar etiqueta PDF">#'+o.id+' 🔗</a>'+
+      '</div>'+
+      itemsSectionHTML(o)+
+      (o.flag==='pago' ? '<div class="ticket-flag">⚠️ Verificar pago antes de despachar</div>' : '')+
+      responsablesResumenHTML(o)+
+      '<div class="ticket-deadline '+sla.level+'">⏰ '+sla.text+'</div>'+
+      '<div class="resp-select-row"><label class="resp-select-label">'+fase.selectLabel+'</label>'+employeeSelectHTML(o, fase.key)+'</div>'+
+      '<div class="ticket-actions">'+
+        '<button class="btn btn-outline" onclick="imprimirEtiqueta(\''+o.id+'\')">🖨️ Etiqueta</button>'+
+        '<button class="btn btn-primary" onclick="avanzarConResponsable(\''+o.id+'\',\''+fase.next+'\',\''+fase.key+'\')">'+fase.label+'</button>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+}
+
+// Modal de detalle multi-producto (facilita el armado del paquete).
+function abrirDetalle(id){
+  const o = orders.find(x=>x.id===id);
+  if(!o) return;
+  document.getElementById('detailModalTitle').textContent = 'Detalle del pedido #'+o.id;
+  document.getElementById('detailModalBody').innerHTML = o.items.map((it,i)=>
+    '<div class="modal-item-row">'+
+      itemThumbHTML(it,i,42)+
+      '<div class="modal-item-info">'+
+        '<div class="modal-item-name">'+it.product+'</div>'+
+        '<div class="modal-item-meta">'+it.variant+' · SKU '+it.sku+'</div>'+
+      '</div>'+
+      '<div class="modal-item-qty">x'+it.qty+'</div>'+
+    '</div>'
+  ).join('');
+  document.getElementById('detailModalOverlay').classList.add('open');
+}
+function cerrarDetalle(){
+  document.getElementById('detailModalOverlay').classList.remove('open');
+}
+function renderKDS(){
+  const filtered = orders.filter(o => currentChannelFilter==='ALL' || o.channel===currentChannelFilter);
+  const nuevos = filtered.filter(o=>o.status==='nuevo');
+  const embalando = filtered.filter(o=>o.status==='embalando');
+  const verificacion = filtered.filter(o=>o.status==='verificacion');
+
+  document.getElementById('countNuevos').textContent = nuevos.length;
+  document.getElementById('countEmbalando').textContent = embalando.length;
+  document.getElementById('countVerificacion').textContent = verificacion.length;
+  document.getElementById('colNuevos').innerHTML = nuevos.length ? nuevos.map(ticketCardHTML).join('') : '<div class="empty">Sin pedidos nuevos en este canal.</div>';
+  document.getElementById('colEmbalando').innerHTML = embalando.length ? embalando.map(ticketCardHTML).join('') : '<div class="empty">Nada en embalaje.</div>';
+  document.getElementById('colVerificacion').innerHTML = verificacion.length ? verificacion.map(ticketCardHTML).join('') : '<div class="empty">Nada en verificación.</div>';
+}
+
+/* ---------- RENDER: DESPACHO ---------- */
+function metodoBadgeHTML(o){
+  const meta = deliveryMeta[o.deliveryMethod];
+  if(!meta) return '—';
+  return '<span class="method-badge" style="background:'+meta.color+'">'+meta.label+'</span>';
+}
+function estadoDespachoHTML(o){
+  if(o.deliveryMethod==='moto_delivery'){
+    return o.motorizadoCoordinado
+      ? '<span style="color:var(--green);font-weight:700;">✅ Motorizado coordinado</span>'
+      : '<span style="color:var(--yellow-text);font-weight:700;">🕐 Pendiente coordinar</span>';
+  }
+  return '<span style="color:var(--text-muted);">—</span>';
+}
+function accionesDespachoHTML(o){
+  let botones = '';
+  if(o.deliveryMethod==='moto_delivery' && !o.motorizadoCoordinado){
+    botones += '<button class="btn btn-outline" onclick="coordinarMotorizado(\''+o.id+'\')">📞 Coordinar motorizado</button>';
+  }
+  const labelFinal = {
+    moto_delivery:'🛵 Marcar entregado',
+    recojo_tienda:'🏬 Marcar recogido',
+    envio_provincia:'📦 Marcar entregado en agencia',
+    punto_acopio:'📍 Marcar entregado en '+channelMeta[o.channel].label
+  }[o.deliveryMethod] || '✅ Marcar entregado';
+  botones += '<button class="btn btn-primary" onclick="marcarDespachado(\''+o.id+'\')">'+labelFinal+'</button>';
+  return botones;
+}
+function renderDespacho(){
+  const pend = orders.filter(o=>o.status==='despacho');
+  document.getElementById('despachoCount').textContent = pend.length+' pedido'+(pend.length===1?'':'s')+' por despachar';
+  document.getElementById('despachoBody').innerHTML = pend.length ? pend.map(o=>{
+    const meta = channelMeta[o.channel];
+    return '<tr>'+
+      '<td>#'+o.id+'</td>'+
+      '<td><span class="channel-badge" style="background:'+meta.color+'">'+meta.label+'</span></td>'+
+      '<td>'+o.customer+'</td>'+
+      '<td>'+o.address+'</td>'+
+      '<td>'+metodoBadgeHTML(o)+'</td>'+
+      '<td>'+(o.responsables.despacho||'—')+'</td>'+
+      '<td>'+estadoDespachoHTML(o)+'</td>'+
+      '<td class="row-actions">'+accionesDespachoHTML(o)+'</td>'+
+    '</tr>';
+  }).join('') : '<tr><td colspan="8" class="empty">No hay pedidos esperando despacho.</td></tr>';
+}
+function coordinarMotorizado(id){
+  const o = orders.find(x=>x.id===id);
+  if(!o) return;
+  o.motorizadoCoordinado = true;
+  toast('📞 Motorizado coordinado para #'+id);
+  renderAll();
+}
+function marcarDespachado(id){
+  const o = orders.find(x=>x.id===id);
+  if(!o) return;
+  o.status = 'facturacion_pendiente';
+  o.despachadoEn = new Date(simulatedNow.getTime());
+  toast('✅ #'+id+' entregado — pasa a Cola de Facturación');
+  renderAll();
+}
+
+/* ---------- RENDER: FACTURACIÓN ---------- */
+function responsablesCompactoHTML(o){
+  const parts = [];
+  if(o.responsables.embalaje) parts.push('📦 '+o.responsables.embalaje);
+  if(o.responsables.verificacion) parts.push('🔍 '+o.responsables.verificacion);
+  if(o.responsables.despacho) parts.push('🚚 '+o.responsables.despacho);
+  return parts.length ? parts.join('<br>') : '—';
+}
+function renderFacturacion(){
+  const pend = orders.filter(o=>o.status==='facturacion_pendiente');
+  document.getElementById('factCount').textContent = pend.length+' pedido'+(pend.length===1?'':'s')+' por facturar';
+  document.getElementById('factBody').innerHTML = pend.length ? pend.map(o=>{
+    const meta = channelMeta[o.channel];
+    return '<tr>'+
+      '<td>#'+o.id+'</td>'+
+      '<td><span class="channel-badge" style="background:'+meta.color+'">'+meta.label+'</span></td>'+
+      '<td>'+o.customer+'</td>'+
+      '<td>'+o.dni+'</td>'+
+      '<td>'+o.address+'</td>'+
+      '<td class="amount">S/ '+o.amount.toFixed(2)+'</td>'+
+      '<td>'+formatDeadlineDate(o.deadline)+'</td>'+
+      '<td style="font-size:.76rem;">'+responsablesCompactoHTML(o)+'</td>'+
+      '<td class="row-actions">'+
+        '<button class="btn btn-outline" onclick="copiarDatos(\''+o.id+'\')">📋 Copiar</button>'+
+        '<button class="btn btn-primary" onclick="marcarFacturado(\''+o.id+'\')">✅ Facturado</button>'+
+      '</td>'+
+    '</tr>';
+  }).join('') : '<tr><td colspan="9" class="empty">No hay pedidos esperando factura.</td></tr>';
+}
+
+/* ---------- BADGES ---------- */
+function renderBadges(){
+  const nuevos = orders.filter(o=>o.status==='nuevo').length;
+  const despacho = orders.filter(o=>o.status==='despacho').length;
+  const fact = orders.filter(o=>o.status==='facturacion_pendiente').length;
+  const bn = document.getElementById('badgeNuevos');
+  const bd = document.getElementById('badgeDespacho');
+  const bf = document.getElementById('badgeFact');
+  bn.textContent = nuevos; bn.classList.toggle('zero', nuevos===0);
+  bd.textContent = despacho; bd.classList.toggle('zero', despacho===0);
+  bf.textContent = fact; bf.classList.toggle('zero', fact===0);
+}
+
+function renderAll(){
+  document.getElementById('clockLabel').textContent = formatClock(simulatedNow);
+  renderPanel(); renderKDS(); renderDespacho(); renderFacturacion(); renderBadges();
+}
+
+/* ---------- ACCIONES ---------- */
+function avanzarConResponsable(id, nuevoEstado, faseKey){
+  const o = orders.find(x=>x.id===id);
+  if(!o) return;
+  const select = document.getElementById('sel-'+id);
+  const responsable = select ? select.value : '';
+  if(!responsable){
+    toast('⚠️ Selecciona un responsable antes de continuar');
+    return;
+  }
+  o.responsables[faseKey] = responsable;
+  o.status = nuevoEstado;
+  if(nuevoEstado==='embalando') toast('📦 #'+id+' → Embalando ('+responsable+')');
+  if(nuevoEstado==='verificacion') toast('🔍 #'+id+' → Verificación ('+responsable+')');
+  if(nuevoEstado==='despacho') toast('🚚 #'+id+' → Cola de Despacho (responsable: '+responsable+')');
+  renderAll();
+}
+function marcarFacturado(id){
+  const o = orders.find(x=>x.id===id);
+  if(!o) return;
+  o.status = 'facturado';
+  o.resultado = o.flag==='pago' ? 'observacion' : 'exitoso';
+  if(o.createdAt) o.tiempoDespachoMinutos = Math.round((simulatedNow - o.createdAt)/60000);
+  facturadosHoy++;
+  toast('🧾 Pedido #'+id+' facturado y archivado');
+  renderAll();
+}
+function copiarDatos(id){
+  const o = orders.find(x=>x.id===id);
+  if(!o) return;
+  const meta = channelMeta[o.channel];
+  const productosTxt = o.items.map(it=>it.qty+'x '+it.product+' ('+it.variant+') SKU '+it.sku).join('; ');
+  const text = 'Cliente: '+o.customer+'\nDNI: '+o.dni+'\nDirección: '+o.address+'\nProductos: '+productosTxt+'\nMonto: S/ '+o.amount.toFixed(2)+'\nCanal: '+meta.label+'\nN° Orden: '+o.id;
+  copyText(text);
+}
+function exportarCSV(){
+  const pend = orders.filter(o=>o.status==='facturacion_pendiente');
+  if(!pend.length){ toast('No hay pedidos por facturar para exportar'); return; }
+  let csv = 'Nombre,DNI,Direccion,Producto,SKU,Cantidad,Precio,Canal,N Orden\n';
+  pend.forEach(o=>{
+    const meta = channelMeta[o.channel];
+    const productoTxt = o.items.map(it=>it.product+' - '+it.variant).join(' + ');
+    const skuTxt = o.items.map(it=>it.sku).join(' + ');
+    const cantidadTotal = o.items.reduce((s,it)=>s+it.qty,0);
+    csv += ['"'+o.customer+'"','"'+o.dni+'"','"'+o.address+'"','"'+productoTxt+'"','"'+skuTxt+'"',cantidadTotal,'"'+o.amount.toFixed(2)+'"','"'+meta.label+'"','"'+o.id+'"'].join(',')+'\n';
+  });
+  const filename = 'TSI_Fubball_'+simulatedNow.toISOString().slice(0,10)+'.csv';
+  downloadFile(filename, csv);
+  toast('⬇️ Archivo TSI generado: '+filename);
+}
+function imprimirEtiqueta(id){
+  const o = orders.find(x=>x.id===id);
+  if(!o) return;
+  const url = labelUrl(o.id);
+
+  playPrintSound();
+  toast('🖨️ Abriendo etiqueta PDF #'+o.id+'…');
+
+  // Intenta imprimir directo el PDF real vía un iframe oculto (funciona si
+  // el archivo ya está subido a /fubball/etiquetas/ y el servidor permite
+  // que se cargue dentro de un iframe). Si falla o no existe, cae a abrir
+  // el PDF en una pestaña nueva para que impriman manualmente desde ahí.
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0'; iframe.style.bottom = '0';
+  iframe.style.width = '0'; iframe.style.height = '0'; iframe.style.border = '0';
+  iframe.src = url;
+  document.body.appendChild(iframe);
+
+  let manejado = false;
+  const abrirFallback = () => {
+    if(manejado) return;
+    manejado = true;
+    window.open(url, '_blank');
+    setTimeout(()=>iframe.remove(), 500);
+  };
+
+  iframe.onload = () => {
+    if(manejado) return;
+    manejado = true;
+    try{
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+      setTimeout(()=>iframe.remove(), 30000);
+    }catch(e){
+      abrirFallback();
+    }
+  };
+  iframe.onerror = abrirFallback;
+  // Si en 4s no cargó nada (ej. el PDF todavía no existe en el servidor),
+  // abre la pestaña de todas formas para mostrar el error real (404) en
+  // vez de quedarse esperando en silencio.
+  setTimeout(abrirFallback, 4000);
+}
+function simularNuevoPedido(){
+  const pick = pool[Math.floor(Math.random()*pool.length)];
+  const name = namePool[Math.floor(Math.random()*namePool.length)];
+  const prefixMap = {FALABELLA:'FAL',RIPLEY:'RIP',SHOPIFY:'SHO',INTERCORP:'INT',WHATSAPP:'WA'};
+  const id = prefixMap[pick.channel]+'-'+Math.floor(1000+Math.random()*9000);
+  const hoursOut = 1 + Math.random()*5;
+  const deadline = new Date(simulatedNow.getTime() + hoursOut*3600000);
+  const metodos = Object.keys(deliveryMeta);
+  orders.push({
+    id, channel:pick.channel,
+    items:[{product:pick.product, variant:pick.variant, sku:pick.sku, qty:1}],
+    customer:name, dni:String(40000000+Math.floor(Math.random()*9000000)),
+    address:'Dirección de entrega, Lima', amount: Math.round((40+Math.random()*160)*100)/100,
+    deadline, status:'nuevo', flag: pick.channel==='WHATSAPP' ? 'pago' : null,
+    deliveryMethod: metodos[Math.floor(Math.random()*metodos.length)],
+    createdAt: new Date(simulatedNow.getTime()),
+    resultado: null, tiempoDespachoMinutos: null, responsables: nuevoResponsables(), motorizadoCoordinado:false
+  });
+  playBeep();
+  toast('🔔 Nuevo pedido recibido — #'+id);
+  renderAll();
+}
+function capturarDesdeExtension(){
+  const btn = document.getElementById('captureBtn');
+  if(btn.disabled) return;
+  const deadline = new Date(simulatedNow.getTime() + 4*3600000);
+  orders.push({
+    id:'FAL-9981205530', channel:'FALABELLA',
+    items:[{product:'Chimpunes Fubball Pro X', variant:'Talla 41', sku:'CHI-PROX-41', qty:1}],
+    customer:'Ana Belén Rojas Farfán', dni:'48213765',
+    address:'Av. Universitaria 1801, San Miguel', amount:159.90, deadline, status:'nuevo', flag:null,
+    deliveryMethod:'punto_acopio', createdAt:new Date(simulatedNow.getTime()),
+    resultado:null, tiempoDespachoMinutos:null, responsables:nuevoResponsables(), motorizadoCoordinado:false
+  });
+  playBeep();
+  btn.textContent = '✅ Enviado a Despacho Fubball';
+  btn.disabled = true;
+  toast('📥 Ticket #FAL-9981205530 creado — revisa el Tablero KDS');
+  renderAll();
+}
+
+/* ---------- NAV / TABS ---------- */
+const tabTitles = {
+  panel:['Panel','Resumen operativo del día'],
+  kds:['Tablero KDS','Comandas de almacén en tiempo real'],
+  despacho:['Cola de Despacho','Delivery, recojo, agencia y punto de acopio'],
+  facturacion:['Cola de Facturación','Puente hacia TSI ERP'],
+  tsi:['Asistente TSI','Plantilla y copiado rápido para el ERP'],
+  extension:['Simulador Extensión','Captura 1-clic desde marketplaces']
+};
+function switchTab(tab){
+  currentTab = tab;
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.querySelectorAll('.nav-item[data-tab]').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  document.getElementById('topbarTitle').textContent = tabTitles[tab][0];
+  document.getElementById('topbarSub').textContent = tabTitles[tab][1];
+  renderAll();
+}
+document.querySelectorAll('.nav-item[data-tab]').forEach(btn=>{
+  btn.addEventListener('click', ()=>switchTab(btn.dataset.tab));
+});
+document.querySelector('.nav-item.disabled').addEventListener('click', ()=>toast('👥 Roles y accesos llegan en la Fase 2 del proyecto'));
+
+document.getElementById('advanceBtn').addEventListener('click', ()=>{
+  simulatedNow = new Date(simulatedNow.getTime() + 3600000);
+  renderAll();
+  toast('🕐 Hora simulada avanzada +1h');
+});
+document.getElementById('soundToggle').addEventListener('click', function(){
+  soundEnabled = !soundEnabled;
+  this.classList.toggle('off', !soundEnabled);
+  this.textContent = soundEnabled ? '🔔' : '🔕';
+  toast(soundEnabled ? 'Alertas de sonido activadas' : 'Alertas de sonido silenciadas');
+});
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  orders = createInitialOrders().concat(generarHistorico());
+  simulatedNow = new Date('2026-08-17T10:00:00');
+  facturadosHoy = 0;
+  currentChannelFilter = 'ALL';
+  const capBtn = document.getElementById('captureBtn');
+  capBtn.disabled = false; capBtn.textContent = '📥 Enviar a Despacho Fubball';
+  renderFilters();
+  renderAll();
+  toast('🔄 Demo reiniciada');
+});
+
+/* ---------- INIT ---------- */
+renderFilters();
+renderAll();
+</script>
+</body>
+</html>
