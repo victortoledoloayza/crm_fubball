@@ -9,13 +9,15 @@
  * Body esperado:
  *   { canal, codigo_orden, cliente_nombre, cliente_dni, cliente_direccion,
  *     fecha_limite, comision, items: [{producto, variante, sku, cantidad,
- *     precio_unitario}] }
+ *     precio_unitario, imagen_url}] }
  *
- * `comision` (comisión de plataforma del pedido completo) e
- * `items[].precio_unitario` son opcionales — la extensión no siempre los
- * tiene a mano al capturar el pedido en 1 clic. Si vienen, monto_total se
- * calcula en el servidor sumando cantidad*precio_unitario de los items
- * (los que no traen precio cuentan como 0 en la suma).
+ * `comision` (comisión de plataforma del pedido completo),
+ * `items[].precio_unitario` e `items[].imagen_url` son opcionales — la
+ * extensión no siempre los tiene a mano al capturar el pedido en 1 clic.
+ * Si vienen precios, monto_total se calcula en el servidor sumando
+ * cantidad*precio_unitario de los items (los que no traen precio cuentan
+ * como 0 en la suma). imagen_url que no sea http(s) válido se guarda como
+ * NULL en vez de rechazar el pedido.
  */
 
 require_once __DIR__ . '/../../core/bootstrap.php';
@@ -105,12 +107,19 @@ foreach ($items as $item) {
     // real se completa/corrige a mano si hace falta.
     $precioItemRaw = $item['precio_unitario'] ?? null;
 
+    // La URL de la foto es un dato de conveniencia, no crítico — si viene
+    // mal formada se descarta en vez de tumbar la creación del pedido
+    // completo por eso.
+    $imagenUrlRaw = trim((string) ($item['imagen_url'] ?? ''));
+    $imagenUrl = preg_match('#^https?://#i', $imagenUrlRaw) ? $imagenUrlRaw : null;
+
     $itemsNormalizados[] = [
         'producto_nombre' => $producto,
         'variante'        => trim((string) ($item['variante'] ?? '')),
         'sku'              => trim((string) ($item['sku'] ?? '')),
         'cantidad'         => max(1, (int) ($item['cantidad'] ?? 1)),
         'precio_unitario'  => $precioItemRaw !== null ? (float) $precioItemRaw : 0.0,
+        'imagen_url'       => $imagenUrl,
     ];
 }
 

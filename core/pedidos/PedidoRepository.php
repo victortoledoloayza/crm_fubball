@@ -94,6 +94,21 @@ class PedidoRepository
         return $pedidos[0];
     }
 
+    // Lookup liviano (sin joins ni items) para integraciones que solo
+    // conocen el codigo_orden — ver api/webhooks/pedido_etiqueta.php, que
+    // necesita encontrar el pedido para adjuntarle la etiqueta pero no
+    // usa el resto de sus datos.
+    public static function obtenerPorCodigoOrden(string $codigoOrden): ?array
+    {
+        $pdo = Database::getConnection();
+
+        $stmt = $pdo->prepare('SELECT id, codigo_orden FROM pedidos WHERE codigo_orden = ? LIMIT 1');
+        $stmt->execute([$codigoOrden]);
+        $fila = $stmt->fetch();
+
+        return $fila === false ? null : $fila;
+    }
+
     // Trae los items de todos los pedidos ya obtenidos en una sola query
     // (WHERE pedido_id IN (...)) y los agrupa en memoria, para evitar el
     // problema N+1 de una query de items por pedido.
@@ -129,7 +144,8 @@ class PedidoRepository
     // ver avanzarFase()), requiere_verificar_pago, origen,
     // usuario_creador_id (puede ser NULL: los webhooks no tienen un
     // usuario logueado detrás), items: [['producto_nombre','variante',
-    // 'sku','cantidad','precio_unitario'], ...].
+    // 'sku','cantidad','precio_unitario'], ...]. 'imagen_url' por item es
+    // opcional (NULL si no viene o no se pasa la clave).
     //
     // Opcionales (altas automáticas — Shopify, extensión Chrome):
     //   codigo_orden: si no se pasa, se genera uno MANUAL-... (alta manual
@@ -197,8 +213,8 @@ class PedidoRepository
             $pedidoId = (int) $pdo->lastInsertId();
 
             $stmtItem = $pdo->prepare(
-                'INSERT INTO pedido_items (pedido_id, producto_nombre, variante, sku, cantidad, precio_unitario)
-                 VALUES (?, ?, ?, ?, ?, ?)'
+                'INSERT INTO pedido_items (pedido_id, producto_nombre, variante, sku, cantidad, precio_unitario, imagen_url)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)'
             );
             foreach ($datos['items'] as $item) {
                 $stmtItem->execute([
@@ -208,6 +224,7 @@ class PedidoRepository
                     $item['sku'] ?: null,
                     $item['cantidad'],
                     $item['precio_unitario'],
+                    $item['imagen_url'] ?? null,
                 ]);
             }
 
