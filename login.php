@@ -131,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php if ($error !== ''): ?>
             <div class="mensaje-error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div>
         <?php endif; ?>
-        <form method="post" action="<?= htmlspecialchars(baseUrl('login.php'), ENT_QUOTES, 'UTF-8') ?>">
+        <form method="post" action="login.php">
             <?= csrfCampo() ?>
             <label for="usuario">Usuario</label>
             <input type="text" id="usuario" name="usuario" autocomplete="username" required autofocus>

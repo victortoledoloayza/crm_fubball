@@ -23,6 +23,7 @@ require_once __DIR__ . '/../../core/bootstrap.php';
 require_once __DIR__ . '/../../core/auth/ApiToken.php';
 require_once __DIR__ . '/../../core/pedidos/PedidoRepository.php';
 require_once __DIR__ . '/../../core/util/EtiquetaPdf.php';
+require_once __DIR__ . '/../../core/util/EtiquetaPdfRecorteFalabella.php';
 
 $tokenFila = requireApiToken();
 
@@ -55,6 +56,10 @@ if ($errorValidacion !== null) {
     http_response_code(422);
     echo json_encode(['ok' => false, 'error' => $errorValidacion]);
     exit;
+}
+
+if ($pedido['canal_codigo'] === 'FALABELLA') {
+    recortarEtiquetaFalabellaSiAplica($archivo['tmp_name'], $codigoOrden);
 }
 
 try {

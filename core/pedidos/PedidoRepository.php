@@ -102,7 +102,13 @@ class PedidoRepository
     {
         $pdo = Database::getConnection();
 
-        $stmt = $pdo->prepare('SELECT id, codigo_orden FROM pedidos WHERE codigo_orden = ? LIMIT 1');
+        $stmt = $pdo->prepare(
+            'SELECT p.id, p.codigo_orden, c.codigo AS canal_codigo
+             FROM pedidos p
+             INNER JOIN canales c ON c.id = p.canal_id
+             WHERE p.codigo_orden = ?
+             LIMIT 1'
+        );
         $stmt->execute([$codigoOrden]);
         $fila = $stmt->fetch();
 
@@ -735,5 +741,42 @@ class PedidoRepository
 
         $stmt = $pdo->prepare('UPDATE pedidos SET etiqueta_pdf_url = ? WHERE id = ?');
         $stmt->execute([$url, $pedidoId]);
+    }
+
+    // Elimina el pedido completo. pedido_items y pedido_eventos tienen
+    // ON DELETE CASCADE hacia pedidos.id (ver fk_items_pedido /
+    // fk_eventos_pedido), así que borrar la fila de pedidos ya se los
+    // lleva; igual se borran items explícito para que el orden quede
+    // claro. Devuelve codigo_orden (para que el endpoint pueda borrar el
+    // PDF de uploads/etiquetas/ con el mismo saneo que guardarEtiquetaPdf())
+    // y etiqueta_pdf_url (null si nunca subió una) — el borrado del
+    // archivo físico se hace fuera de la transacción, después del commit.
+    public static function eliminar(int $pedidoId): array
+    {
+        $pdo = Database::getConnection();
+        $pdo->beginTransaction();
+
+        try {
+            $stmt = $pdo->prepare('SELECT codigo_orden, etiqueta_pdf_url FROM pedidos WHERE id = ? FOR UPDATE');
+            $stmt->execute([$pedidoId]);
+            $fila = $stmt->fetch();
+
+            if ($fila === false) {
+                throw new PedidoTransicionInvalidaException("El pedido #{$pedidoId} no existe.");
+            }
+
+            $pdo->prepare('DELETE FROM pedido_items WHERE pedido_id = ?')->execute([$pedidoId]);
+            $pdo->prepare('DELETE FROM pedidos WHERE id = ?')->execute([$pedidoId]);
+
+            $pdo->commit();
+
+            return [
+                'codigo_orden'     => $fila['codigo_orden'],
+                'etiqueta_pdf_url' => $fila['etiqueta_pdf_url'],
+            ];
+        } catch (Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
     }
 }

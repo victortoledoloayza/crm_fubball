@@ -74,15 +74,33 @@ require __DIR__ . '/core/ui/layout_header.php';
         .channel-badge { font-size: .64rem; font-weight: 800; color: #fff; padding: 3px 9px; border-radius: 6px; text-transform: uppercase; letter-spacing: .03em; white-space: nowrap; }
         .ticket-id { font-size: .7rem; color: var(--text-muted); font-weight: 700; white-space: nowrap; text-decoration: none; border-bottom: 1px dashed var(--text-muted); }
         .ticket-id:hover { color: var(--text); border-bottom-color: var(--text); }
+        .ticket-top-right { display: flex; align-items: center; gap: 8px; }
+        .btn-delete-icon { background: none; border: none; padding: 2px 4px; font-size: .8rem; line-height: 1; cursor: pointer; opacity: .5; }
+        .btn-delete-icon:hover { opacity: 1; }
 
-        .ticket-product-row { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 9px; }
+        .ticket-product-row { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 9px; }
         .ticket-product-info { flex: 1; min-width: 0; }
-        .item-thumb { display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; flex-shrink: 0; overflow: hidden; position: relative; }
-        .item-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .item-thumb {
+            display: inline-flex; align-items: center; justify-content: center;
+            border-radius: 10px; flex-shrink: 0; overflow: hidden; position: relative;
+            background: #f2f3f7; border: 1px solid var(--border);
+        }
+        .item-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; transition: transform .18s ease; }
+        a.item-thumb { cursor: pointer; }
+        a.item-thumb:hover img { transform: scale(1.15); }
+        .item-thumb-badge {
+            position: absolute; bottom: 3px; right: 3px; width: 18px; height: 18px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(15,18,30,.65); color: #fff; border-radius: 50%;
+            font-size: 10px; opacity: 0; transition: opacity .15s ease;
+        }
+        a.item-thumb:hover .item-thumb-badge { opacity: 1; }
+        .item-thumb--sinfoto { color: var(--text-muted); font-size: 1.3rem; cursor: default; }
+        .item-thumb--sinfoto .item-thumb-placeholder-icon { opacity: .55; }
         .item-thumbs-stack { display: flex; align-items: center; flex-shrink: 0; }
-        .item-thumbs-stack .item-thumb { margin-left: -10px; border: 2px solid #fff; border-radius: 8px; }
+        .item-thumbs-stack .item-thumb { margin-left: -12px; border: 2px solid #fff; border-radius: 8px; }
         .item-thumbs-stack .item-thumb:first-child { margin-left: 0; }
-        .item-thumb.more { background: #e5e7ee; color: var(--text-muted); font-size: .62rem; font-weight: 800; }
+        .item-thumb.more { background: #e5e7ee; color: var(--text-muted); font-size: .68rem; font-weight: 800; }
         .detail-link { background: none; border: none; padding: 0; margin-top: 3px; color: var(--red); font-size: .76rem; font-weight: 700; cursor: pointer; text-decoration: underline; font-family: inherit; }
         .detail-link:hover { color: var(--red-dark); }
 
@@ -103,17 +121,43 @@ require __DIR__ . '/core/ui/layout_header.php';
 
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15,18,30,.55); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
         .modal-overlay.open { display: flex; }
-        .modal-card { background: #fff; border-radius: 16px; max-width: 420px; width: 100%; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
+        .modal-card { background: #fff; border-radius: 16px; max-width: 480px; width: 100%; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
         .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 18px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: #fff; }
         .modal-header h3 { margin: 0; font-size: .95rem; }
         .modal-close { background: #f2f3f7; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 1rem; cursor: pointer; color: var(--text-muted); }
         .modal-body { padding: 8px 18px 18px; }
-        .modal-item-row { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+        .modal-item-row { display: flex; gap: 14px; align-items: flex-start; padding: 14px 0; border-bottom: 1px solid var(--border); }
         .modal-item-row:last-child { border-bottom: none; }
-        .modal-item-info { flex: 1; min-width: 0; }
+        .modal-item-thumb {
+            width: 150px; height: 150px; flex-shrink: 0; border-radius: 12px; overflow: hidden;
+            background: #f2f3f7; border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .modal-item-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; cursor: zoom-in; }
+        .modal-item-thumb--sinfoto { color: var(--text-muted); font-size: 2.2rem; }
+        .modal-item-col { display: flex; flex-direction: column; gap: 7px; min-width: 0; flex: 1; }
+        .modal-item-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
         .modal-item-name { font-weight: 700; font-size: .86rem; }
         .modal-item-meta { color: var(--text-muted); font-size: .78rem; margin-top: 2px; }
         .modal-item-qty { font-weight: 800; font-size: .85rem; background: #f2f3f7; border-radius: 8px; padding: 4px 10px; flex-shrink: 0; }
+        .modal-item-link {
+            align-self: flex-start; font-size: .74rem; font-weight: 700; color: var(--red);
+            text-decoration: none; border: 1px solid var(--border); border-radius: 6px; padding: 4px 9px;
+        }
+        .modal-item-link:hover { background: #f2f3f7; color: var(--red-dark); }
+
+        .lightbox-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(10,12,20,.9); z-index: 2000;
+            align-items: center; justify-content: center; flex-direction: column; padding: 24px; cursor: zoom-out;
+        }
+        .lightbox-overlay.open { display: flex; }
+        .lightbox-overlay img { max-width: 90vw; max-height: 78vh; object-fit: contain; border-radius: 8px; box-shadow: 0 20px 60px rgba(0,0,0,.5); cursor: default; }
+        .lightbox-close {
+            position: absolute; top: 18px; right: 22px; width: 36px; height: 36px; border-radius: 50%;
+            border: none; background: rgba(255,255,255,.12); color: #fff; font-size: 1.1rem; cursor: pointer;
+        }
+        .lightbox-close:hover { background: rgba(255,255,255,.22); }
+        .lightbox-caption { margin-top: 14px; color: #e8eaf0; font-size: .85rem; font-weight: 600; text-align: center; }
 
         #toast { position: fixed; bottom: 22px; right: 22px; display: flex; flex-direction: column; gap: 8px; z-index: 999; max-width: 320px; }
         .toast-item { background: #1c2233; color: #fff; padding: 12px 16px; border-radius: 10px; font-size: .82rem; font-weight: 600; box-shadow: 0 6px 16px rgba(0,0,0,.25); animation: toastIn .2s ease; }
@@ -161,10 +205,20 @@ require __DIR__ . '/core/ui/layout_header.php';
         </div>
     </div>
 
+    <div class="lightbox-overlay" id="lightboxOverlay" onclick="if(event.target===this) cerrarLightbox()">
+        <button class="lightbox-close" onclick="cerrarLightbox()" title="Cerrar">✕</button>
+        <img id="lightboxImg" src="" alt="">
+        <div class="lightbox-caption" id="lightboxCaption"></div>
+    </div>
+
     <script>
     /* ---------- CONFIG (inyectada desde PHP) ---------- */
     const API_BASE = <?= json_encode(baseUrl('api/'), JSON_UNESCAPED_SLASHES) ?>;
     const CSRF_TOKEN = <?= json_encode(csrfToken()) ?>;
+    // Controla si se pinta el botón "Eliminar" en las tarjetas — el
+    // servidor SIEMPRE vuelve a validar el rol en api/pedidos_eliminar.php,
+    // esto solo evita mostrar el botón a quien no puede usarlo.
+    const ES_ADMIN = <?= json_encode(($usuarioActual['rol'] ?? null) === 'admin') ?>;
     // channelMeta viene de la tabla `canales` real (antes era un objeto
     // hardcodeado en el prototipo) — así nunca se desincroniza con la BD.
     const channelMeta = <?= json_encode($channelMetaPhp, JSON_UNESCAPED_UNICODE) ?>;
@@ -240,11 +294,72 @@ require __DIR__ . '/core/ui/layout_header.php';
     // Si el item ya trae imagen_url real (columna pedido_items.imagen_url),
     // se usa directo; si no (todavía no hay fotos reales cargadas), cae al
     // mapeo por categoría de arriba.
+    // La miniatura de tarjeta es un link que abre la imagen original en una
+    // pestaña nueva (clic) y hace zoom con transform:scale al pasar el
+    // cursor (inspección rápida sin clic) — pedido de almacén para comparar
+    // contra el stock físico. Si no hay URL o la imagen falla al cargar, se
+    // deja un placeholder visible en vez de un hueco vacío.
     function itemThumbHTML(item, idx, size){
         const src = item.imagenUrl || productImageUrl(item.product);
-        return '<span class="item-thumb" style="width:'+size+'px;height:'+size+'px;background:#eef0f4">'+
-            '<img src="'+encodeURI(src)+'" alt="'+escapeHtml(item.product)+'" loading="lazy" onerror="this.style.display=\'none\'">'+
-        '</span>';
+        const nombreEsc = escapeHtml(item.product);
+        if(!src){
+            return '<span class="item-thumb item-thumb--sinfoto" style="width:'+size+'px;height:'+size+'px" title="Sin imagen disponible">'+
+                '<span class="item-thumb-placeholder-icon">📦</span>'+
+            '</span>';
+        }
+        const url = encodeURI(src);
+        return '<a class="item-thumb" href="'+url+'" target="_blank" rel="noopener" style="width:'+size+'px;height:'+size+'px" title="Ver imagen completa en pestaña nueva">'+
+            '<img src="'+url+'" alt="'+nombreEsc+'" loading="lazy" onerror="itemThumbError(this)">'+
+            '<span class="item-thumb-badge">🔍</span>'+
+        '</a>';
+    }
+    function itemThumbError(imgEl){
+        const wrap = imgEl.closest('.item-thumb');
+        if(!wrap) return;
+        wrap.classList.add('item-thumb--sinfoto');
+        wrap.innerHTML = '<span class="item-thumb-placeholder-icon">📦</span>';
+        wrap.removeAttribute('href');
+        wrap.style.pointerEvents = 'none';
+    }
+
+    // Miniatura ampliada del modal de detalle: misma resolución de imagen,
+    // pero con clic para lightbox en vez de pestaña nueva (el botón
+    // "🔗 Ver imagen completa" de al lado cubre ese caso).
+    function modalItemThumbHTML(item){
+        const src = item.imagenUrl || productImageUrl(item.product);
+        if(!src){
+            return '<div class="modal-item-thumb modal-item-thumb--sinfoto" title="Sin imagen disponible"><span class="item-thumb-placeholder-icon">📦</span></div>';
+        }
+        const url = encodeURI(src);
+        const nombreEsc = escapeHtml(item.product);
+        return '<div class="modal-item-thumb">'+
+            '<img src="'+url+'" alt="'+nombreEsc+'" data-full="'+url+'" data-nombre="'+nombreEsc+'" loading="lazy" onclick="abrirLightbox(this)" onerror="modalThumbError(this)">'+
+        '</div>';
+    }
+    function modalItemLinkHTML(item){
+        const src = item.imagenUrl || productImageUrl(item.product);
+        if(!src) return '';
+        return '<a class="modal-item-link" href="'+encodeURI(src)+'" target="_blank" rel="noopener">🔗 Ver imagen completa</a>';
+    }
+    function modalThumbError(imgEl){
+        const wrap = imgEl.closest('.modal-item-thumb');
+        if(!wrap) return;
+        wrap.classList.add('modal-item-thumb--sinfoto');
+        wrap.innerHTML = '<span class="item-thumb-placeholder-icon">📦</span>';
+    }
+
+    /* ---------- LIGHTBOX (zoom de imagen a pantalla completa) ---------- */
+    function abrirLightbox(imgEl){
+        const url = imgEl.dataset.full || imgEl.src;
+        const nombre = imgEl.dataset.nombre || imgEl.alt || '';
+        document.getElementById('lightboxImg').src = url;
+        document.getElementById('lightboxImg').alt = nombre;
+        document.getElementById('lightboxCaption').textContent = nombre;
+        document.getElementById('lightboxOverlay').classList.add('open');
+    }
+    function cerrarLightbox(){
+        document.getElementById('lightboxOverlay').classList.remove('open');
+        document.getElementById('lightboxImg').src = '';
     }
 
     // Adapta una fila cruda de api/pedidos_listar.php / pedidos_detalle.php
@@ -298,7 +413,7 @@ require __DIR__ . '/core/ui/layout_header.php';
             const it = o.items[0];
             const detalle = [it.variant, it.sku ? ('SKU '+it.sku) : ''].filter(Boolean).map(escapeHtml).join(' · ');
             return '<div class="ticket-product-row">'+
-                itemThumbHTML(it,0,58)+
+                itemThumbHTML(it,0,84)+
                 '<div class="ticket-product-info">'+
                     '<div class="ticket-product">'+escapeHtml(it.product)+'</div>'+
                     (detalle ? '<div class="ticket-variant">'+detalle+'</div>' : '')+
@@ -306,8 +421,8 @@ require __DIR__ . '/core/ui/layout_header.php';
                 '</div>'+
             '</div>';
         }
-        const thumbs = o.items.slice(0,3).map((it,i)=>itemThumbHTML(it,i,34)).join('');
-        const extra = o.items.length>3 ? '<span class="item-thumb more" style="width:34px;height:34px;">+'+(o.items.length-3)+'</span>' : '';
+        const thumbs = o.items.slice(0,3).map((it,i)=>itemThumbHTML(it,i,44)).join('');
+        const extra = o.items.length>3 ? '<span class="item-thumb more" style="width:44px;height:44px;">+'+(o.items.length-3)+'</span>' : '';
         return '<div class="ticket-product-row">'+
             '<div class="item-thumbs-stack">'+thumbs+extra+'</div>'+
             '<div class="ticket-product-info">'+
@@ -352,13 +467,19 @@ require __DIR__ . '/core/ui/layout_header.php';
         const botonEtiqueta = o.etiquetaPdfUrl
             ? '<button class="btn btn-outline" onclick="imprimirEtiqueta('+o.id+')">🖨️ Etiqueta</button>'
             : '<button class="btn btn-outline" onclick="elegirArchivoEtiqueta('+o.id+')">📎 Subir etiqueta PDF</button>';
+        // El botón de eliminar solo se pinta para admin (ES_ADMIN, inyectado
+        // desde PHP) — el servidor vuelve a validar el rol en
+        // api/pedidos_eliminar.php de todas formas.
+        const botonEliminar = ES_ADMIN
+            ? '<button class="btn-delete-icon" onclick="eliminarPedido('+o.id+')" title="Eliminar pedido">🗑️ Eliminar</button>'
+            : '';
         return ''+
         '<div class="ticket">'+
             '<div class="ticket-sla '+sla.level+'"></div>'+
             '<div class="ticket-body">'+
                 '<div class="ticket-top">'+
                     '<span class="channel-badge" style="background:'+meta.color+'">'+escapeHtml(meta.label)+'</span>'+
-                    enlaceOrden+
+                    '<div class="ticket-top-right">'+enlaceOrden+botonEliminar+'</div>'+
                 '</div>'+
                 itemsSectionHTML(o)+
                 (o.flag==='pago' ? '<div class="ticket-flag">⚠️ Verificar pago antes de despachar</div>' : '')+
@@ -403,12 +524,15 @@ require __DIR__ . '/core/ui/layout_header.php';
             document.getElementById('detailModalBody').innerHTML = o.items.map((it,i)=>{
                 const detalle = [it.variant, it.sku ? ('SKU '+it.sku) : ''].filter(Boolean).map(escapeHtml).join(' · ');
                 return '<div class="modal-item-row">'+
-                    itemThumbHTML(it,i,42)+
-                    '<div class="modal-item-info">'+
-                        '<div class="modal-item-name">'+escapeHtml(it.product)+'</div>'+
+                    modalItemThumbHTML(it)+
+                    '<div class="modal-item-col">'+
+                        '<div class="modal-item-top">'+
+                            '<div class="modal-item-name">'+escapeHtml(it.product)+'</div>'+
+                            '<div class="modal-item-qty">x'+it.qty+'</div>'+
+                        '</div>'+
                         (detalle ? '<div class="modal-item-meta">'+detalle+'</div>' : '')+
+                        modalItemLinkHTML(it)+
                     '</div>'+
-                    '<div class="modal-item-qty">x'+it.qty+'</div>'+
                 '</div>';
             }).join('');
             document.getElementById('detailModalOverlay').classList.add('open');
@@ -592,6 +716,33 @@ require __DIR__ . '/core/ui/layout_header.php';
             cargarPedidos();
         } catch(e) {
             toast('⚠️ Error de red al avanzar el pedido.');
+        }
+    }
+
+    // Busca el pedido en pedidosCache (no en el atributo onclick) para
+    // mostrar el código de orden en el confirm() sin tener que
+    // interpolarlo crudo dentro de un atributo HTML — mismo patrón que
+    // imprimirEtiqueta(id).
+    async function eliminarPedido(id){
+        const o = pedidosCache.find(x=>x.id===id);
+        const codigo = o ? o.codigoOrden : ('#'+id);
+        if(!confirm('¿Eliminar el pedido '+codigo+'? Esta acción no se puede deshacer.')) return;
+
+        try {
+            const resp = await fetch(API_BASE+'pedidos_eliminar.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ pedido_id: id, csrf_token: CSRF_TOKEN })
+            });
+            const data = await resp.json();
+            if(!data.ok){
+                toast('⚠️ '+(data.error||'No se pudo eliminar el pedido.'));
+                return;
+            }
+            toast('🗑️ Pedido eliminado');
+            cargarPedidos();
+        } catch(e) {
+            toast('⚠️ Error de red al eliminar el pedido.');
         }
     }
 

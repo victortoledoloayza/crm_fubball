@@ -39,6 +39,13 @@ $itemsNav = [
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        (function () {
+            if (localStorage.getItem('kds_sidebar_colapsado') === '1') {
+                document.documentElement.classList.add('sidebar-colapsado');
+            }
+        })();
+    </script>
     <style>
         :root {
             --bg-sidebar: #161c2b;
@@ -57,6 +64,10 @@ $itemsNav = [
             background: var(--bg-app);
             color: #1f2430;
             padding-left: 240px;
+            transition: padding-left 0.2s ease;
+        }
+        html.sidebar-colapsado body {
+            padding-left: 0;
         }
         .app-sidebar {
             position: fixed;
@@ -70,6 +81,11 @@ $itemsNav = [
             flex-direction: column;
             overflow-y: auto;
             z-index: 20;
+            transform: translateX(0);
+            transition: transform 0.2s ease;
+        }
+        html.sidebar-colapsado .app-sidebar {
+            transform: translateX(-240px);
         }
         .app-sidebar__logo {
             display: flex;
@@ -139,10 +155,41 @@ $itemsNav = [
             border-bottom: 1px solid var(--borde);
             display: flex;
             align-items: center;
-            justify-content: flex-end;
+            justify-content: space-between;
             gap: 14px;
             padding: 0 24px;
             z-index: 10;
+            transition: left 0.2s ease;
+        }
+        html.sidebar-colapsado .app-topbar {
+            left: 0;
+        }
+        .topbar-toggle {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 4px;
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            border: none;
+            border-radius: 6px;
+            background: transparent;
+            cursor: pointer;
+        }
+        .topbar-toggle:hover { background: #f0f1f3; }
+        .topbar-toggle span {
+            display: block;
+            width: 18px;
+            height: 2px;
+            margin: 0 auto;
+            background: #1f2430;
+            border-radius: 1px;
+        }
+        .topbar-usuario {
+            display: flex;
+            align-items: center;
+            gap: 14px;
         }
         .topbar-rol {
             font-size: 11px;
@@ -172,7 +219,7 @@ $itemsNav = [
     </style>
 </head>
 <body>
-    <aside class="app-sidebar">
+    <aside class="app-sidebar" id="appSidebar">
         <div class="app-sidebar__logo">
             <span>Fubball <span class="acento">KDS</span></span>
         </div>
@@ -198,10 +245,21 @@ $itemsNav = [
         </nav>
     </aside>
     <header class="app-topbar">
-        <?php if ($usuarioActual !== null): ?>
-            <span class="topbar-rol"><?= htmlspecialchars(mb_strtoupper($usuarioActual['rol'], 'UTF-8'), ENT_QUOTES, 'UTF-8') ?></span>
-            <span class="topbar-nombre"><?= htmlspecialchars($usuarioActual['nombre'], ENT_QUOTES, 'UTF-8') ?></span>
-            <a class="topbar-cerrar" href="<?= htmlspecialchars(baseUrl('logout.php'), ENT_QUOTES, 'UTF-8') ?>">Cerrar sesión</a>
-        <?php endif; ?>
+        <button type="button" class="topbar-toggle" id="sidebarToggle" aria-label="Mostrar u ocultar menú" aria-controls="appSidebar">
+            <span></span><span></span><span></span>
+        </button>
+        <div class="topbar-usuario">
+            <?php if ($usuarioActual !== null): ?>
+                <span class="topbar-rol"><?= htmlspecialchars(mb_strtoupper($usuarioActual['rol'], 'UTF-8'), ENT_QUOTES, 'UTF-8') ?></span>
+                <span class="topbar-nombre"><?= htmlspecialchars($usuarioActual['nombre'], ENT_QUOTES, 'UTF-8') ?></span>
+                <a class="topbar-cerrar" href="<?= htmlspecialchars(baseUrl('logout.php'), ENT_QUOTES, 'UTF-8') ?>">Cerrar sesión</a>
+            <?php endif; ?>
+        </div>
     </header>
+    <script>
+        document.getElementById('sidebarToggle').addEventListener('click', function () {
+            var colapsado = document.documentElement.classList.toggle('sidebar-colapsado');
+            localStorage.setItem('kds_sidebar_colapsado', colapsado ? '1' : '0');
+        });
+    </script>
     <main class="contenido">
