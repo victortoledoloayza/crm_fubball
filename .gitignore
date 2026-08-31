@@ -13,6 +13,10 @@
 *.sql
 *.sqlite
 
+# Excepción: migraciones versionadas (CREATE/ALTER incrementales, sin datos)
+# sí se suben — a diferencia de dumps sueltos o exports con datos reales.
+!scripts/migraciones/*.sql
+
 # Archivos subidos por usuarios (etiquetas)
 uploads/etiquetas/*
 !uploads/etiquetas/.gitkeep
