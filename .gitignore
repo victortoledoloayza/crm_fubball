@@ -25,3 +25,15 @@ uploads/etiquetas/*
 *.log
 .DS_Store
 Thumbs.db
+
+# Archivos subidos por usuarios (etiquetas)
+!/uploads/etiquetas/
+uploads/etiquetas/*
+!uploads/etiquetas/.gitkeep
+!uploads/etiquetas/.htaccess
+
+# Archivos subidos por usuarios (respuestas rápidas)
+!/uploads/respuestas_rapidas/
+uploads/respuestas_rapidas/*
+!uploads/respuestas_rapidas/.gitkeep
+!uploads/respuestas_rapidas/.htaccess

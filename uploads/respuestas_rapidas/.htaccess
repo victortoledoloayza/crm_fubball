@@ -1,0 +1,19 @@
+# Adjuntos de Respuestas Rápidas (imagen/video/pdf/audio/documento),
+# subidos desde el panel admin (api/respuestas_rapidas_guardar.php) o desde
+# la extensión (api/webhooks/respuestas_rapidas.php). Igual que
+# uploads/etiquetas/: esta carpeta SÍ debe poder servirse directo por
+# navegador (la extensión los consume como URL pública directa) — pero
+# nunca ejecutar nada como script. Esto es defensa en profundidad además
+# de la validación de mime type/extensión que ya hace el endpoint al subir
+# el archivo.
+<FilesMatch "\.(php|phtml|php\d|pl|py|cgi|sh|exe)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+Options -Indexes
