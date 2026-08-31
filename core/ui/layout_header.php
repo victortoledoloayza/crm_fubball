@@ -27,6 +27,7 @@ $itemsNav = [
     'despacho'    => ['etiqueta' => 'Cola de Despacho',     'url' => baseUrl('despacho.php'),   'icono' => '🛵', 'disponible' => true, 'badgeEstado' => 'despacho'],
     'facturacion' => ['etiqueta' => 'Cola de Facturación',  'url' => baseUrl('facturacion.php'), 'icono' => '🧾', 'disponible' => true, 'badgeEstado' => 'facturacion_pendiente'],
     'tsi'         => ['etiqueta' => 'Asistente TSI',        'url' => baseUrl('tsi.php'),          'icono' => '🔗', 'disponible' => true],
+    'respuestas'  => ['etiqueta' => 'Respuestas Rápidas',   'url' => baseUrl('respuestas_rapidas.php'), 'icono' => '💬', 'disponible' => true],
     'usuarios'    => ['etiqueta' => 'Usuarios',             'url' => baseUrl('usuarios.php'),   'icono' => '👥', 'disponible' => true, 'rol' => 'admin'],
 ];
 ?>
