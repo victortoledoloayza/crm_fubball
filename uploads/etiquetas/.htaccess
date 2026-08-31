@@ -1,0 +1,16 @@
+# Etiquetas PDF subidas desde el Tablero KDS (api/pedido_subir_etiqueta.php).
+# A diferencia de /core, esta carpeta SÍ debe poder servirse directo por
+# navegador (para imprimir) — pero nunca ejecutar nada como script. Esto
+# es defensa en profundidad además de la validación de mime type/extensión
+# que ya hace el endpoint al subir el archivo.
+<FilesMatch "\.(php|phtml|php\d|pl|py|cgi|sh|exe)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+Options -Indexes
