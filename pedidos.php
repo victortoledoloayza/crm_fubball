@@ -166,7 +166,7 @@ require __DIR__ . '/core/ui/layout_header.php';
 
     <div class="toolbar-superior">
         <div class="section-sub">
-            Flujo: Nuevo → Embalando → Verificación → Despacho → Facturación. Cada cambio de fase requiere elegir un
+            Flujo: Nuevo → Embalar → Verificar → Enviar a Despacho → Despachar → Facturación. Cada cambio de fase requiere elegir un
             responsable. El semáforo (🟢🟡🔴) se calcula contra la hora límite de despacho. El número de orden (#) es
             un link directo a la etiqueta PDF.
         </div>
@@ -180,15 +180,15 @@ require __DIR__ . '/core/ui/layout_header.php';
     <div class="filters" id="channelFilters"></div>
     <div class="board">
         <div class="column">
-            <div class="column-header"><span>🆕 Nuevos</span><span class="column-count" id="countNuevos">0</span></div>
+            <div class="column-header"><span>🆕 Nuevo</span><span class="column-count" id="countNuevos">0</span></div>
             <div class="cards" id="colNuevos"></div>
         </div>
         <div class="column">
-            <div class="column-header"><span>📦 Embalando</span><span class="column-count" id="countEmbalando">0</span></div>
+            <div class="column-header"><span>📦 Embalar</span><span class="column-count" id="countEmbalando">0</span></div>
             <div class="cards" id="colEmbalando"></div>
         </div>
         <div class="column">
-            <div class="column-header"><span>🔍 Verificación</span><span class="column-count" id="countVerificacion">0</span></div>
+            <div class="column-header"><span>🔍 Verificar</span><span class="column-count" id="countVerificacion">0</span></div>
             <div class="cards" id="colVerificacion"></div>
         </div>
     </div>
@@ -467,6 +467,11 @@ require __DIR__ . '/core/ui/layout_header.php';
         const botonEtiqueta = o.etiquetaPdfUrl
             ? '<button class="btn btn-outline" onclick="imprimirEtiqueta('+o.id+')">🖨️ Etiqueta</button>'
             : '<button class="btn btn-outline" onclick="elegirArchivoEtiqueta('+o.id+')">📎 Subir etiqueta PDF</button>';
+        // "Nuevo" es el inicio del flujo — no tiene fase anterior a la que
+        // regresar (ver TRANSICIONES_INVERSAS en PedidoRepository).
+        const botonRegresar = o.status !== 'nuevo'
+            ? '<button class="btn btn-outline" onclick="regresarFase('+o.id+',\''+o.status+'\')">← Regresar</button>'
+            : '';
         // El botón de eliminar solo se pinta para admin (ES_ADMIN, inyectado
         // desde PHP) — el servidor vuelve a validar el rol en
         // api/pedidos_eliminar.php de todas formas.
@@ -489,6 +494,7 @@ require __DIR__ . '/core/ui/layout_header.php';
                 (fase ? (
                     '<div class="resp-select-row"><label class="resp-select-label">'+fase.selectLabel+'</label>'+employeeSelectHTML(o, fase.key)+'</div>'+
                     '<div class="ticket-actions">'+
+                        botonRegresar+
                         botonEtiqueta+
                         '<button class="btn btn-primary" onclick="avanzarConResponsable('+o.id+',\''+fase.next+'\',\''+fase.key+'\')">'+fase.label+'</button>'+
                     '</div>'+
@@ -664,11 +670,17 @@ require __DIR__ . '/core/ui/layout_header.php';
         try {
             const resp = await fetch(API_BASE+'metodos_listar.php');
             const data = await resp.json();
-            if(data.ok) metodosCache = data.metodos;
+            if(data.ok){
+                metodosCache = data.metodos;
+            } else {
+                console.error('[cargarMetodos] respuesta no ok:', data.error || data);
+            }
         } catch(e) {
-            // Silencioso: si un pedido necesita el select de método y esto
-            // falló, avanzarConResponsable() lo va a rechazar con un toast
-            // claro en vez de romperse en silencio.
+            // No es silencioso a propósito: si un pedido necesita el select
+            // de método y esto falló, avanzarConResponsable() lo va a
+            // rechazar con un toast claro, pero el error real (fetch caído,
+            // JSON inválido, etc.) queda en consola para poder diagnosticarlo.
+            console.error('[cargarMetodos] fetch falló:', e);
         }
     }
 
@@ -716,6 +728,40 @@ require __DIR__ . '/core/ui/layout_header.php';
             cargarPedidos();
         } catch(e) {
             toast('⚠️ Error de red al avanzar el pedido.');
+        }
+    }
+
+    // Devuelve el pedido a la fase anterior (mismo endpoint que usan
+    // despacho.php y facturacion.php) — pide confirmación porque puede
+    // pisar trabajo ya hecho en la fase actual (ej. el responsable
+    // asignado ahí queda como estaba, pero el pedido ya no cuenta como
+    // "en esa fase"). estadoActual viaja al backend para que
+    // retrocederFase() detecte si la tarjeta quedó desactualizada
+    // (alguien más ya movió el pedido) antes de aplicar el cambio.
+    async function regresarFase(id, estadoActual){
+        const o = pedidosCache.find(x=>x.id===id);
+        const codigo = o ? o.codigoOrden : ('#'+id);
+        if(!confirm('¿Regresar el pedido '+codigo+' a la fase anterior? Esta acción queda registrada en el historial.')) return;
+
+        try {
+            const resp = await fetch(API_BASE+'pedidos_retroceder.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    pedido_id: id,
+                    estado_actual: estadoActual,
+                    csrf_token: CSRF_TOKEN
+                })
+            });
+            const data = await resp.json();
+            if(!data.ok){
+                toast('⚠️ '+(data.error||'No se pudo regresar el pedido.'));
+                return;
+            }
+            toast('↩️ Pedido regresado a la fase anterior');
+            cargarPedidos();
+        } catch(e) {
+            toast('⚠️ Error de red al regresar el pedido.');
         }
     }
 

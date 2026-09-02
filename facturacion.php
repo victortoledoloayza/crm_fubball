@@ -171,6 +171,7 @@ require __DIR__ . '/core/ui/layout_header.php';
             '<td>'+formatDeadlineDate(o.deadline)+'</td>'+
             '<td style="font-size:.76rem;">'+responsablesCompactoHTML(o)+'</td>'+
             '<td class="row-actions">'+
+                '<button type="button" class="btn btn-outline" onclick="regresarFase('+o.id+')">← Regresar</button>'+
                 '<button type="button" class="btn btn-outline" onclick="copiarDatos('+o.id+')">📋 Copiar</button>'+
                 '<button type="button" class="btn btn-primary" onclick="marcarFacturadoUI('+o.id+')">✅ Facturado</button>'+
             '</td>'+
@@ -216,6 +217,34 @@ require __DIR__ . '/core/ui/layout_header.php';
             '\nCanal: '+o.channel.nombre+
             '\nN° Orden: '+o.codigoOrden;
         copyText(text);
+    }
+    // Todo pedido en esta cola está en estado 'facturacion_pendiente' (ver
+    // PedidoRepository::listarFacturacionPendiente()), así que se hardcodea
+    // acá igual que en despacho.php.
+    async function regresarFase(id){
+        const o = pedidosCache.find(x=>x.id===id);
+        const codigo = o ? o.codigoOrden : ('#'+id);
+        if(!confirm('¿Regresar el pedido '+codigo+' a Despacho? Esta acción queda registrada en el historial.')) return;
+
+        try {
+            const resp = await fetch(API_BASE+'pedidos_retroceder.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({pedido_id: id, estado_actual: 'facturacion_pendiente', csrf_token: CSRF_TOKEN})
+            });
+            const data = await resp.json();
+            if(!data.ok){
+                toast('⚠️ '+(data.error||'No se pudo regresar el pedido.'));
+                return;
+            }
+            // Misma lógica que marcarFacturadoUI: la fila sale de esta cola,
+            // así que se quita de inmediato sin esperar el refresco de 30s.
+            pedidosCache = pedidosCache.filter(o=>o.id!==id);
+            renderFacturacion();
+            toast('↩️ Pedido regresado a Despacho');
+        } catch(e) {
+            toast('⚠️ Error de red al regresar el pedido.');
+        }
     }
     async function marcarFacturadoUI(id){
         try {

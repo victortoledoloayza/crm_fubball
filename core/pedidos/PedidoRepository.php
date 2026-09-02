@@ -39,6 +39,18 @@ class PedidoRepository
         'verificacion' => ['siguiente' => 'despacho',      'campo' => 'despacho'],
     ];
 
+    // Inverso de TRANSICIONES + los dos pasos que avanzarFase() no cubre
+    // (despacho y facturacion_pendiente, que avanzan vía marcarDespachado()
+    // / marcarFacturado()) — usado por retrocederFase() para poder
+    // corregir un error operativo desde cualquier fase salvo 'nuevo', que
+    // es el inicio del flujo y no tiene fase anterior.
+    private const TRANSICIONES_INVERSAS = [
+        'embalando'             => 'nuevo',
+        'verificacion'          => 'embalando',
+        'despacho'              => 'verificacion',
+        'facturacion_pendiente' => 'despacho',
+    ];
+
     public static function listarPorEstado(string ...$estados): array
     {
         $pdo = Database::getConnection();
@@ -357,6 +369,67 @@ class PedidoRepository
                  VALUES (?, ?, ?, ?)'
             );
             $stmtEvento->execute([$pedidoId, $usuarioQueEjecutaId, $estadoActual, $nuevoEstado]);
+
+            $pdo->commit();
+        } catch (Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+    }
+
+    // Regresa un pedido a la fase anterior — corrige un error operativo
+    // (se avanzó de fase por accidente, o hay que reabrir el paso previo)
+    // desde el Tablero KDS, la Cola de Despacho o la Cola de Facturación.
+    // A diferencia de avanzarFase(), no toca columnas de responsable ni
+    // timestamps de fase (metodo_despacho_id, despachado_en, etc.) — se
+    // vuelven a completar solos cuando el pedido re-avanza; acá solo se
+    // mueve `estado` y se deja constancia en pedido_eventos.
+    // $estadoActualEsperado protege contra condiciones de carrera igual
+    // que avanzarFase(): si alguien más ya movió el pedido desde que la UI
+    // cargó la tarjeta/fila, se rechaza en vez de aplicar el retroceso
+    // sobre datos viejos.
+    public static function retrocederFase(
+        int $pedidoId,
+        string $estadoActualEsperado,
+        int $usuarioQueEjecutaId
+    ): void {
+        $pdo = Database::getConnection();
+        $pdo->beginTransaction();
+
+        try {
+            $stmt = $pdo->prepare('SELECT estado FROM pedidos WHERE id = ? FOR UPDATE');
+            $stmt->execute([$pedidoId]);
+            $fila = $stmt->fetch();
+
+            if ($fila === false) {
+                throw new PedidoTransicionInvalidaException("El pedido #{$pedidoId} no existe.");
+            }
+
+            $estadoActual = $fila['estado'];
+
+            if ($estadoActual !== $estadoActualEsperado) {
+                throw new PedidoTransicionInvalidaException(
+                    "El pedido está en estado '{$estadoActual}', no en '{$estadoActualEsperado}'. "
+                    . 'Recarga la página e intenta de nuevo.'
+                );
+            }
+
+            $estadoAnterior = self::TRANSICIONES_INVERSAS[$estadoActual] ?? null;
+
+            if ($estadoAnterior === null) {
+                throw new PedidoTransicionInvalidaException(
+                    "El pedido está en estado '{$estadoActual}' y no admite regresar de fase."
+                );
+            }
+
+            $stmtUpdate = $pdo->prepare('UPDATE pedidos SET estado = ? WHERE id = ?');
+            $stmtUpdate->execute([$estadoAnterior, $pedidoId]);
+
+            $stmtEvento = $pdo->prepare(
+                "INSERT INTO pedido_eventos (pedido_id, usuario_id, estado_anterior, estado_nuevo, nota)
+                 VALUES (?, ?, ?, ?, 'Regresado manualmente')"
+            );
+            $stmtEvento->execute([$pedidoId, $usuarioQueEjecutaId, $estadoActual, $estadoAnterior]);
 
             $pdo->commit();
         } catch (Throwable $e) {

@@ -155,6 +155,12 @@ require __DIR__ . '/core/ui/layout_header.php';
         }
         return '<button type="button" class="btn btn-primary" onclick="marcarEntregado('+o.id+')">✅ Marcar entregado</button>';
     }
+    // Todo pedido en esta cola está en estado 'despacho' (ver
+    // PedidoRepository::listarDespacho()), así que no hace falta leer el
+    // estado de la fila — regresarFase() lo asume fijo.
+    function regresarButtonHTML(id){
+        return '<button type="button" class="btn btn-outline" onclick="regresarFase('+id+')">← Regresar</button>';
+    }
     function filaHTML(o){
         return '<tr id="fila-'+o.id+'">'+
             '<td><a class="ticket-id" href="'+labelUrl(o.codigoOrden)+'" target="_blank" rel="noopener">#'+escapeHtml(o.codigoOrden)+' 🔗</a></td>'+
@@ -164,7 +170,7 @@ require __DIR__ . '/core/ui/layout_header.php';
             '<td>'+metodoBadgeHTML(o)+'</td>'+
             '<td>'+escapeHtml(o.responsable || '—')+'</td>'+
             '<td>'+estadoHTML(o)+'</td>'+
-            '<td class="row-actions">'+accionesDespachoHTML(o)+'</td>'+
+            '<td class="row-actions">'+regresarButtonHTML(o.id)+accionesDespachoHTML(o)+'</td>'+
         '</tr>';
     }
     function renderDespacho(){
@@ -188,12 +194,12 @@ require __DIR__ . '/core/ui/layout_header.php';
     }
 
     /* ---------- ACCIONES ---------- */
-    async function postAccion(url, pedidoId){
+    async function postAccion(url, pedidoId, extra){
         try {
             const resp = await fetch(API_BASE+url, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({pedido_id: pedidoId, csrf_token: CSRF_TOKEN})
+                body: JSON.stringify(Object.assign({pedido_id: pedidoId, csrf_token: CSRF_TOKEN}, extra||{}))
             });
             const data = await resp.json();
             if(!data.ok){
@@ -204,6 +210,17 @@ require __DIR__ . '/core/ui/layout_header.php';
         } catch(e) {
             toast('⚠️ Error de red.');
             return false;
+        }
+    }
+    async function regresarFase(id){
+        const o = pedidosCache.find(x=>x.id===id);
+        const codigo = o ? o.codigoOrden : ('#'+id);
+        if(!confirm('¿Regresar el pedido '+codigo+' a Verificación? Esta acción queda registrada en el historial.')) return;
+
+        const ok = await postAccion('pedidos_retroceder.php', id, {estado_actual: 'despacho'});
+        if(ok){
+            toast('↩️ Pedido regresado a Verificación');
+            cargarDespacho();
         }
     }
     async function coordinarMotorizado(id){

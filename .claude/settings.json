@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./build_dist.sh)",
+      "Bash(node --check sidepanel.js)",
+      "Bash(node --check test_config_entorno.js)",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('manifest.json'\\)\\); console.log\\('manifest.json OK'\\)\")",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('dist/manifest.json'\\)\\); console.log\\('dist/manifest.json OK'\\)\")",
+      "Bash(echo \"config_entorno exit=$?\")",
+      "Bash(echo \"respuestas_rapidas exit=$?\")",
+      "Bash(grep -n \"cargarMetodos\\\\|cargarUsuarios\\\\|cargarPedidos\\\\|DOMContentLoaded\\\\|setInterval\\\\|window.onload\\\\|async function init\\\\|^    init\\\\|}\\);$\" /Applications/XAMPP/xamppfiles/htdocs/fubball_kds/pedidos.php)",
+      "Bash(php -r ' *)",
+      "Bash(php -l *)",
+      "Bash(node --check *)"
+    ]
+  }
+}
