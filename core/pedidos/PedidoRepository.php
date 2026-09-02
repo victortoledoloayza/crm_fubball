@@ -195,13 +195,20 @@ class PedidoRepository
             $comisionPlataforma = array_key_exists('comision_plataforma', $datos) && $datos['comision_plataforma'] !== null
                 ? (float) $datos['comision_plataforma']
                 : null;
+            // Ambos opcionales — los webhooks (Shopify, extensión Chrome) no
+            // los mandan todavía, así que caen a los mismos defaults de la
+            // columna (0 y 'PEN') en vez de fallar por falta de la clave.
+            $costoEnvio = array_key_exists('costo_envio', $datos) && $datos['costo_envio'] !== null
+                ? (float) $datos['costo_envio']
+                : 0.0;
+            $moneda = $datos['moneda'] ?? 'PEN';
 
             $stmt = $pdo->prepare(
                 'INSERT INTO pedidos
                     (codigo_orden, canal_id, cliente_nombre, cliente_dni, cliente_telefono,
-                     cliente_email, cliente_direccion, monto_total, comision_plataforma, fecha_limite, estado,
-                     metodo_despacho_id, requiere_verificar_pago, origen)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \'nuevo\', ?, ?, ?)'
+                     cliente_email, cliente_direccion, monto_total, comision_plataforma, costo_envio, moneda,
+                     fecha_limite, estado, metodo_despacho_id, requiere_verificar_pago, origen)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \'nuevo\', ?, ?, ?)'
             );
 
             try {
@@ -215,6 +222,8 @@ class PedidoRepository
                     $datos['cliente_direccion'] ?: null,
                     $montoTotal,
                     $comisionPlataforma,
+                    $costoEnvio,
+                    $moneda,
                     $datos['fecha_limite'],
                     $datos['metodo_despacho_id'] ?: null,
                     $datos['requiere_verificar_pago'] ? 1 : 0,

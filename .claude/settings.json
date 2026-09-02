@@ -11,7 +11,8 @@
       "Bash(grep -n \"cargarMetodos\\\\|cargarUsuarios\\\\|cargarPedidos\\\\|DOMContentLoaded\\\\|setInterval\\\\|window.onload\\\\|async function init\\\\|^    init\\\\|}\\);$\" /Applications/XAMPP/xamppfiles/htdocs/fubball_kds/pedidos.php)",
       "Bash(php -r ' *)",
       "Bash(php -l *)",
-      "Bash(node --check *)"
+      "Bash(node --check *)",
+      "Bash(python3 -m json.tool /Applications/XAMPP/xamppfiles/htdocs/fubball_kds/.claude/settings.local.json)"
     ]
   }
 }

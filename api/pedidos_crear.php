@@ -26,9 +26,25 @@ $clienteDireccion = trim($_POST['cliente_direccion'] ?? '');
 $fechaLimite = trim($_POST['fecha_limite'] ?? '');
 $metodoDespachoId = filter_input(INPUT_POST, 'metodo_despacho_id', FILTER_VALIDATE_INT);
 $requiereVerificarPago = isset($_POST['requiere_verificar_pago']);
+// Solo llega con valor cuando el alta vino de "Cargar desde PDF de Orden
+// TSI" (ver pedidos_nuevo.php) — en alta manual normal el campo queda
+// vacío y PedidoRepository::crear() genera el MANUAL-... de siempre.
+$codigoOrden = trim($_POST['codigo_orden'] ?? '');
+$costoEnvio = filter_input(INPUT_POST, 'costo_envio', FILTER_VALIDATE_FLOAT);
+$moneda = trim($_POST['moneda'] ?? 'PEN');
 $itemsPost = $_POST['items'] ?? [];
 
 $errores = [];
+
+if ($costoEnvio === false || $costoEnvio === null) {
+    $costoEnvio = 0.0;
+} elseif ($costoEnvio < 0) {
+    $errores[] = 'El costo de envío no puede ser negativo.';
+}
+
+if (!in_array($moneda, ['PEN', 'USD'], true)) {
+    $errores[] = 'Moneda no válida.';
+}
 
 if (!$canalId) {
     $errores[] = 'Selecciona un canal.';
@@ -86,12 +102,15 @@ if (!empty($errores)) {
 
 try {
     $pedidoId = PedidoRepository::crear([
+        'codigo_orden'             => $codigoOrden !== '' ? $codigoOrden : null,
         'canal_id'                => $canalId,
         'cliente_nombre'          => $clienteNombre,
         'cliente_dni'              => $clienteDni,
         'cliente_telefono'         => $clienteTelefono,
         'cliente_email'            => $clienteEmail,
         'cliente_direccion'        => $clienteDireccion,
+        'costo_envio'              => $costoEnvio,
+        'moneda'                   => $moneda,
         'fecha_limite'             => $fechaLimite,
         'metodo_despacho_id'       => $metodoDespachoId ?: null,
         'requiere_verificar_pago'  => $requiereVerificarPago,

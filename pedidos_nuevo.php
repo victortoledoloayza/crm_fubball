@@ -12,7 +12,7 @@ require_once __DIR__ . '/core/bootstrap.php';
 Auth::requireLogin();
 
 $pdo = Database::getConnection();
-$canales = $pdo->query('SELECT id, nombre FROM canales WHERE activo = 1 ORDER BY nombre')->fetchAll();
+$canales = $pdo->query('SELECT id, codigo, nombre FROM canales WHERE activo = 1 ORDER BY nombre')->fetchAll();
 $metodosDespacho = $pdo->query('SELECT id, nombre FROM metodos_despacho WHERE activo = 1 ORDER BY nombre')->fetchAll();
 
 $error = $_GET['error'] ?? '';
@@ -46,6 +46,10 @@ require __DIR__ . '/core/ui/layout_header.php';
         .btn-primario { background: #d6483d; color: #fff; border: none; padding: 11px 22px; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
         .btn-primario:hover { background: #b83a30; }
         .mensaje-error { background: #fdecec; border: 1px solid #f6b8b3; color: #a3231a; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 18px; max-width: 720px; }
+
+        .tsi-upload-box { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 8px; padding: 14px 16px; margin-bottom: 18px; }
+        .tsi-upload-box label { margin-bottom: 8px; }
+        .tsi-upload-msg { font-size: 12.5px; margin-top: 8px; font-weight: 600; }
     </style>
 
     <?php if ($error !== ''): ?>
@@ -65,7 +69,7 @@ require __DIR__ . '/core/ui/layout_header.php';
                     <select id="canal_id" name="canal_id" required>
                         <option value="">— Selecciona —</option>
                         <?php foreach ($canales as $c): ?>
-                            <option value="<?= (int) $c['id'] ?>"><?= htmlspecialchars($c['nombre'], ENT_QUOTES, 'UTF-8') ?></option>
+                            <option value="<?= (int) $c['id'] ?>" data-codigo="<?= htmlspecialchars($c['codigo'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($c['nombre'], ENT_QUOTES, 'UTF-8') ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -73,6 +77,12 @@ require __DIR__ . '/core/ui/layout_header.php';
                     <label for="fecha_limite">Fecha límite de despacho</label>
                     <input type="datetime-local" id="fecha_limite" name="fecha_limite" required>
                 </div>
+            </div>
+
+            <div id="tsiUploadBox" class="tsi-upload-box" style="display:none;">
+                <label for="tsiPdfInput">📄 Cargar desde PDF de Orden de Pedido</label>
+                <input type="file" id="tsiPdfInput" accept="application/pdf">
+                <div id="tsiUploadMsg" class="tsi-upload-msg"></div>
             </div>
 
             <div class="campo-grid">
@@ -118,6 +128,24 @@ require __DIR__ . '/core/ui/layout_header.php';
                 </div>
             </div>
 
+            <div class="campo-grid">
+                <div>
+                    <label for="costo_envio">Costo de envío / flete</label>
+                    <input type="number" id="costo_envio" name="costo_envio" min="0" step="0.01" value="0">
+                </div>
+                <div>
+                    <label for="moneda">Moneda</label>
+                    <select id="moneda" name="moneda">
+                        <option value="PEN" selected>PEN — Soles</option>
+                        <option value="USD">USD — Dólares</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Se completa solo al cargar un PDF de Orden TSI (ver más abajo); en alta
+                 manual normal queda vacío y el backend genera el código MANUAL-... de siempre. -->
+            <input type="hidden" id="codigo_orden" name="codigo_orden" value="">
+
             <div class="items-titulo">Productos</div>
             <div id="itemsContenedor"></div>
             <button type="button" class="btn-agregar" id="btnAgregarProducto">+ Agregar producto</button>
@@ -143,9 +171,18 @@ require __DIR__ . '/core/ui/layout_header.php';
         const contenedor = document.getElementById('itemsContenedor');
         const plantilla = document.getElementById('plantillaItem');
 
-        function agregarFilaProducto() {
+        // prefill (opcional): {producto_nombre, sku, cantidad, precio_unitario}
+        // — viene del PDF de TSI cuando se llama desde ahí; en el alta manual
+        // normal se llama sin argumento y la fila queda vacía como siempre.
+        function agregarFilaProducto(prefill) {
             const fragmento = plantilla.content.cloneNode(true);
             const fila = fragmento.querySelector('.item-row');
+            if (prefill) {
+                fila.querySelector('[name="items[][producto_nombre]"]').value = prefill.producto_nombre || '';
+                fila.querySelector('[name="items[][sku]"]').value = prefill.sku || '';
+                fila.querySelector('[name="items[][cantidad]"]').value = prefill.cantidad || 1;
+                fila.querySelector('[name="items[][precio_unitario]"]').value = (prefill.precio_unitario !== undefined && prefill.precio_unitario !== null) ? prefill.precio_unitario : '';
+            }
             fila.querySelector('.quitar-item').addEventListener('click', () => {
                 if (contenedor.children.length > 1) {
                     fila.remove();
@@ -154,8 +191,99 @@ require __DIR__ . '/core/ui/layout_header.php';
             contenedor.appendChild(fragmento);
         }
 
-        document.getElementById('btnAgregarProducto').addEventListener('click', agregarFilaProducto);
+        document.getElementById('btnAgregarProducto').addEventListener('click', () => agregarFilaProducto());
         agregarFilaProducto();
+
+        /* ---------- CARGA DESDE PDF DE ORDEN TSI ---------- */
+        const API_BASE = <?= json_encode(baseUrl('api/'), JSON_UNESCAPED_SLASHES) ?>;
+        const CSRF_TOKEN = <?= json_encode(csrfToken()) ?>;
+
+        const selectCanal = document.getElementById('canal_id');
+        const tsiUploadBox = document.getElementById('tsiUploadBox');
+        const tsiPdfInput = document.getElementById('tsiPdfInput');
+        const tsiUploadMsg = document.getElementById('tsiUploadMsg');
+
+        function esCanalTSI() {
+            const opt = selectCanal.options[selectCanal.selectedIndex];
+            return !!opt && opt.dataset.codigo === 'TSI';
+        }
+        function actualizarVisibilidadTSI() {
+            tsiUploadBox.style.display = esCanalTSI() ? 'block' : 'none';
+        }
+        selectCanal.addEventListener('change', actualizarVisibilidadTSI);
+        actualizarVisibilidadTSI();
+
+        // Marca visualmente si un campo se completó desde el PDF (verde) o
+        // quedó vacío porque el regex correspondiente no matcheó (ámbar) —
+        // así el usuario sabe de un vistazo qué revisar antes de confirmar.
+        function marcarCampoTSI(id, vinoDelPdf) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.style.borderColor = vinoDelPdf ? '#22c55e' : '#f59e0b';
+            el.style.background = vinoDelPdf ? '#f0fdf4' : '#fffbeb';
+        }
+
+        tsiPdfInput.addEventListener('change', async () => {
+            const archivo = tsiPdfInput.files[0];
+            if (!archivo) return;
+
+            tsiUploadMsg.textContent = 'Leyendo PDF…';
+            tsiUploadMsg.style.color = '#374151';
+
+            const formData = new FormData();
+            formData.append('archivo', archivo);
+            formData.append('csrf_token', CSRF_TOKEN);
+
+            try {
+                const resp = await fetch(API_BASE + 'tsi_extraer_pdf.php', { method: 'POST', body: formData });
+                const data = await resp.json();
+
+                if (!data.ok) {
+                    // No se toca el formulario — el usuario sigue pudiendo
+                    // completarlo a mano sin que nada se haya roto.
+                    tsiUploadMsg.textContent = '⚠️ ' + (data.error || 'No se pudo leer el PDF.');
+                    tsiUploadMsg.style.color = '#a3231a';
+                    return;
+                }
+
+                const c = data.campos;
+                const faltantes = data.campos_faltantes || [];
+
+                document.getElementById('codigo_orden').value = c.codigo_orden || '';
+                document.getElementById('cliente_nombre').value = c.cliente_nombre || '';
+                document.getElementById('cliente_dni').value = c.cliente_dni || '';
+                document.getElementById('cliente_telefono').value = c.cliente_telefono || '';
+                document.getElementById('cliente_direccion').value = c.cliente_direccion || '';
+                if (c.fecha_limite) {
+                    // "YYYY-MM-DD HH:MM:SS" -> "YYYY-MM-DDTHH:MM" (formato de datetime-local).
+                    document.getElementById('fecha_limite').value = c.fecha_limite.replace(' ', 'T').slice(0, 16);
+                }
+                document.getElementById('moneda').value = c.moneda || 'PEN';
+                // costo_envio: el PDF de TSI no lo trae — se deja en 0 para
+                // que el usuario lo complete a mano (ver plan confirmado).
+
+                ['cliente_nombre', 'cliente_dni', 'cliente_telefono', 'cliente_direccion'].forEach(campo => {
+                    marcarCampoTSI(campo, !faltantes.includes(campo));
+                });
+                marcarCampoTSI('fecha_limite', !faltantes.includes('fecha_limite'));
+
+                if (c.items && c.items.length) {
+                    contenedor.innerHTML = '';
+                    c.items.forEach(item => agregarFilaProducto(item));
+                }
+
+                if (faltantes.length) {
+                    tsiUploadMsg.textContent = '⚠️ Se cargaron los datos del PDF, pero no se pudieron leer estos campos — complétalos a mano: ' + faltantes.join(', ');
+                    tsiUploadMsg.style.color = '#92660a';
+                } else {
+                    tsiUploadMsg.textContent = '✅ Datos cargados desde el PDF — revisa todo antes de crear el pedido.';
+                    tsiUploadMsg.style.color = '#166534';
+                }
+            } catch (e) {
+                tsiUploadMsg.textContent = '⚠️ Error de red al leer el PDF.';
+                tsiUploadMsg.style.color = '#a3231a';
+            }
+        });
     </script>
 <?php
 require __DIR__ . '/core/ui/layout_footer.php';
