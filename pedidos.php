@@ -72,6 +72,7 @@ require __DIR__ . '/core/ui/layout_header.php';
         .ticket-sla.red { background: var(--red); }
         .ticket-body { padding: 13px 15px; }
         .ticket-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 9px; gap: 8px; }
+        .ticket-top-left { display: flex; align-items: center; gap: 6px; min-width: 0; flex-wrap: wrap; }
         .channel-badge { font-size: .64rem; font-weight: 800; color: #fff; padding: 3px 9px; border-radius: 6px; text-transform: uppercase; letter-spacing: .03em; white-space: nowrap; }
         .ticket-id { font-size: .7rem; color: var(--text-muted); font-weight: 700; white-space: nowrap; text-decoration: none; border-bottom: 1px dashed var(--text-muted); }
         .ticket-id:hover { color: var(--text); border-bottom-color: var(--text); }
@@ -115,6 +116,14 @@ require __DIR__ . '/core/ui/layout_header.php';
         .ticket-deadline.green { color: var(--green); }
         .ticket-deadline.yellow { color: var(--yellow-text); }
         .ticket-deadline.red { color: var(--red); }
+        .deadline-marketplace { font-size: .68rem; color: var(--text-muted); margin: -6px 0 10px; }
+        /* Paleta deliberadamente distinta a la del semáforo (verde/ámbar/
+           rojo) — la prioridad es un concepto separado, no otra forma de
+           pintar la misma urgencia por tiempo. */
+        .prioridad-select { border: none; border-radius: 999px; padding: 3px 8px; font-size: .68rem; font-weight: 700; font-family: inherit; cursor: pointer; }
+        .prioridad-select.normal { background-color: #f3f4f6; color: #4b5563; }
+        .prioridad-select.urgente { background-color: #ede9fe; color: #6d28d9; }
+        .prioridad-select.muy_urgente { background-color: #fce7f3; color: #be185d; }
         .resp-select-row { margin-bottom: 10px; }
         .resp-select-label { display: block; font-size: .66rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .03em; }
         .resp-select { width: 100%; padding: 7px 8px; border: 1px solid var(--border); border-radius: 8px; font-size: .78rem; font-family: inherit; background: #fff; color: var(--text); }
@@ -416,6 +425,9 @@ require __DIR__ . '/core/ui/layout_header.php';
             customer: row.cliente_nombre,
             address: row.cliente_direccion,
             deadline: new Date(String(row.fecha_limite).replace(' ', 'T')),
+            deadlineMarketplace: row.fecha_limite_marketplace ? new Date(String(row.fecha_limite_marketplace).replace(' ', 'T')) : null,
+            prioridad: row.prioridad || 'normal',
+            prioridadManual: parseInt(row.prioridad_manual, 10) === 1,
             status: row.estado,
             flag: parseInt(row.requiere_verificar_pago, 10) === 1 ? 'pago' : null,
             metodoDespachoId: row.metodo_despacho_id !== null ? parseInt(row.metodo_despacho_id, 10) : null,
@@ -530,18 +542,37 @@ require __DIR__ . '/core/ui/layout_header.php';
         const botonEliminar = ES_ADMIN
             ? '<button class="btn-delete-icon" onclick="eliminarPedido('+o.id+')" title="Eliminar pedido">🗑️</button>'
             : '';
+        // Badge de prioridad — a propósito con una paleta distinta a la del
+        // semáforo (ver CSS .prioridad-select) para que no se lean como la
+        // misma cosa. prioridadManual solo importa para saber si ya fue
+        // fijada a mano; el <select> siempre queda editable.
+        const prioridadLabels = {normal:'Normal', urgente:'Urgente', muy_urgente:'Muy urgente'};
+        const prioridadSelectHTML = '<select class="prioridad-select '+o.prioridad+'" title="'+(o.prioridadManual?'Prioridad fijada a mano':'Prioridad automática según tiempo restante')+'" onchange="cambiarPrioridad('+o.id+', this.value)">'+
+            Object.keys(prioridadLabels).map(p => '<option value="'+p+'"'+(p===o.prioridad?' selected':'')+'>'+prioridadLabels[p]+'</option>').join('')+
+        '</select>';
+        // Solo se muestra si la hora marketplace difiere de la interna en
+        // más de un minuto — para TSI/manual (sin reglas_sla aplicadas)
+        // ambas quedan iguales y esta línea no aporta nada, se omite.
+        const difiereMarketplace = o.deadlineMarketplace && Math.abs(o.deadlineMarketplace - o.deadline) > 60000;
+        const corteMarketplaceHTML = difiereMarketplace
+            ? '<div class="deadline-marketplace">Corte '+escapeHtml(meta.label)+': '+formatHora12(o.deadlineMarketplace)+'</div>'
+            : '';
         return ''+
         '<div class="ticket">'+
             '<div class="ticket-sla '+sla.level+'"></div>'+
             '<div class="ticket-body">'+
                 '<div class="ticket-top">'+
-                    '<span class="channel-badge" style="background:'+meta.color+'">'+escapeHtml(meta.label)+'</span>'+
+                    '<div class="ticket-top-left">'+
+                        '<span class="channel-badge" style="background:'+meta.color+'">'+escapeHtml(meta.label)+'</span>'+
+                        prioridadSelectHTML+
+                    '</div>'+
                     '<div class="ticket-top-right">'+enlaceOrden+botonEditar+botonEliminar+'</div>'+
                 '</div>'+
                 itemsSectionHTML(o)+
                 (o.flag==='pago' ? '<div class="ticket-flag">⚠️ Verificar pago antes de despachar</div>' : '')+
                 responsablesResumenHTML(o)+
                 '<div class="ticket-deadline '+sla.level+'">⏰ <strong>'+(sla.level==='red'?'venció ':'vence ')+formatHoraConFecha(o.deadline)+'</strong> <span class="deadline-detalle">('+(sla.level==='red'?'VENCIDO':sla.text)+')</span></div>'+
+                corteMarketplaceHTML+
                 (necesitaMetodo ? '<div class="resp-select-row"><label class="resp-select-label">Método de despacho (pendiente de confirmar)</label>'+metodoSelectHTML(o)+'</div>' : '')+
                 (fase ? (
                     '<div class="resp-select-row"><label class="resp-select-label">'+fase.selectLabel+'</label>'+employeeSelectHTML(o, fase.key)+'</div>'+
@@ -714,6 +745,31 @@ require __DIR__ . '/core/ui/layout_header.php';
             cargarPedidos();
         } catch(e) {
             toast('⚠️ Error de red al generar la etiqueta.');
+        }
+    }
+
+    // Sobreescribe la prioridad a mano — marca prioridad_manual=1 en el
+    // servidor, así que PedidoRepository::recalcularPrioridadesAutomaticas()
+    // (el refresco de 30s) ya no la vuelve a tocar hasta que alguien la
+    // cambie de nuevo desde acá.
+    async function cambiarPrioridad(id, valor){
+        try {
+            const resp = await fetch(API_BASE+'pedidos_prioridad.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({pedido_id: id, prioridad: valor, csrf_token: CSRF_TOKEN})
+            });
+            const data = await resp.json();
+            if(!data.ok){
+                toast('⚠️ '+(data.error||'No se pudo cambiar la prioridad.'));
+                cargarPedidos(); // revierte el <select> a lo que realmente quedó guardado
+                return;
+            }
+            toast('✅ Prioridad actualizada');
+            cargarPedidos();
+        } catch(e) {
+            toast('⚠️ Error de red al cambiar la prioridad.');
+            cargarPedidos();
         }
     }
 

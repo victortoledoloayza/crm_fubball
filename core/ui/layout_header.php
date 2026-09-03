@@ -29,6 +29,7 @@ $itemsNav = [
     'tsi'         => ['etiqueta' => 'Asistente TSI',        'url' => baseUrl('tsi.php'),          'icono' => '🔗', 'disponible' => true],
     'respuestas'  => ['etiqueta' => 'Respuestas Rápidas',   'url' => baseUrl('respuestas_rapidas.php'), 'icono' => '💬', 'disponible' => true],
     'usuarios'    => ['etiqueta' => 'Usuarios',             'url' => baseUrl('usuarios.php'),   'icono' => '👥', 'disponible' => true, 'rol' => 'admin'],
+    'configuracion_sla' => ['etiqueta' => 'Reglas SLA',     'url' => baseUrl('configuracion_sla.php'), 'icono' => '⏱️', 'disponible' => true, 'rol' => 'admin'],
 ];
 ?>
 <!DOCTYPE html>

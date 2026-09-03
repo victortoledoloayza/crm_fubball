@@ -17,6 +17,9 @@
  * parametrizar nombres de columna).
  */
 
+require_once __DIR__ . '/ReglaSlaCalculator.php';
+require_once __DIR__ . '/PrioridadCalculator.php';
+
 class PedidoTransicionInvalidaException extends RuntimeException
 {
 }
@@ -50,6 +53,51 @@ class PedidoRepository
         'despacho'              => 'verificacion',
         'facturacion_pendiente' => 'despacho',
     ];
+
+    // Recalcula `prioridad` en bloque para todos los pedidos activos con
+    // prioridad_manual=0, según el tiempo restante hasta fecha_limite
+    // (interna) — ver PrioridadCalculator. Se llama desde
+    // api/pedidos_listar.php, que ya se pide cada 30s desde el tablero
+    // (setInterval existente) — aprovecha ese ciclo en vez de crear un
+    // mecanismo de recálculo aparte. Un pedido con prioridad_manual=1
+    // (alguien lo cambió a mano) nunca se toca acá.
+    public static function recalcularPrioridadesAutomaticas(): void
+    {
+        $pdo = Database::getConnection();
+
+        $stmt = $pdo->prepare(
+            "UPDATE pedidos
+             SET prioridad = CASE
+                 WHEN fecha_limite < NOW() + INTERVAL ? MINUTE THEN 'muy_urgente'
+                 WHEN fecha_limite < NOW() + INTERVAL ? MINUTE THEN 'urgente'
+                 ELSE 'normal'
+             END
+             WHERE prioridad_manual = 0 AND estado NOT IN ('facturado', 'cancelado')"
+        );
+        $stmt->execute([
+            PrioridadCalculator::UMBRAL_MUY_URGENTE_MINUTOS,
+            PrioridadCalculator::UMBRAL_URGENTE_MINUTOS,
+        ]);
+    }
+
+    // Sobreescritura manual desde el tablero — a partir de acá el pedido
+    // queda "fijado" en esta prioridad: recalcularPrioridadesAutomaticas()
+    // nunca la vuelve a tocar hasta que alguien la cambie de nuevo a mano
+    // (o, si hiciera falta más adelante, algo la vuelva a poner en 0).
+    public static function actualizarPrioridadManual(int $pedidoId, string $prioridad): void
+    {
+        if (!in_array($prioridad, ['normal', 'urgente', 'muy_urgente'], true)) {
+            throw new InvalidArgumentException("Prioridad inválida: '{$prioridad}'.");
+        }
+
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare('UPDATE pedidos SET prioridad = ?, prioridad_manual = 1 WHERE id = ?');
+        $stmt->execute([$prioridad, $pedidoId]);
+
+        if ($stmt->rowCount() === 0) {
+            throw new PedidoTransicionInvalidaException("El pedido #{$pedidoId} no existe.");
+        }
+    }
 
     public static function listarPorEstado(string ...$estados): array
     {
@@ -205,12 +253,21 @@ class PedidoRepository
                 : 0.0;
             $moneda = $datos['moneda'] ?? 'PEN';
 
+            // El único valor de fecha que manda el caller (webhook, alta
+            // manual, TSI) se trata como la hora marketplace — si el canal
+            // tiene reglas_sla activas, acá se calcula la interna aplicando
+            // el colchón; si no, ambas quedan iguales. Nunca se re-ejecuta
+            // al editar (ver PedidoRepository::actualizar()).
+            $fechasLimite = ReglaSlaCalculator::calcular($pdo, (int) $datos['canal_id'], $datos['fecha_limite']);
+            $prioridadInicial = PrioridadCalculator::calcular($fechasLimite['fecha_limite']);
+
             $stmt = $pdo->prepare(
                 'INSERT INTO pedidos
                     (codigo_orden, canal_id, cliente_nombre, cliente_dni, cliente_telefono,
                      cliente_email, cliente_direccion, monto_total, comision_plataforma, costo_envio, moneda,
-                     fecha_limite, estado, metodo_despacho_id, requiere_verificar_pago, origen)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \'nuevo\', ?, ?, ?)'
+                     fecha_limite, fecha_limite_marketplace, prioridad, estado, metodo_despacho_id,
+                     requiere_verificar_pago, origen)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \'nuevo\', ?, ?, ?)'
             );
 
             try {
@@ -226,7 +283,9 @@ class PedidoRepository
                     $comisionPlataforma,
                     $costoEnvio,
                     $moneda,
-                    $datos['fecha_limite'],
+                    $fechasLimite['fecha_limite'],
+                    $fechasLimite['fecha_limite_marketplace'],
+                    $prioridadInicial,
                     $datos['metodo_despacho_id'] ?: null,
                     $datos['requiere_verificar_pago'] ? 1 : 0,
                     $datos['origen'],

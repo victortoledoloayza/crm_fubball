@@ -37,4 +37,10 @@ if (!empty($estadosInvalidos)) {
     exit;
 }
 
+// Recalcula prioridad automática (pedidos con prioridad_manual=0) en
+// bloque, antes de listar — este endpoint ya se pide cada 30s desde el
+// tablero, así que esto reemplaza la necesidad de un cron/mecanismo
+// aparte (ver PedidoRepository::recalcularPrioridadesAutomaticas()).
+PedidoRepository::recalcularPrioridadesAutomaticas();
+
 echo json_encode(['ok' => true, 'pedidos' => PedidoRepository::listarPorEstado(...$estados)]);
