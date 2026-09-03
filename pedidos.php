@@ -701,32 +701,101 @@ require __DIR__ . '/core/ui/layout_header.php';
             toast('⚠️ Error de red al cargar los pedidos.');
         }
     }
-    // Se pide una sola vez por carga de página (no por cada tarjeta).
-    async function cargarUsuarios(){
+    // Se piden una sola vez por carga de página (no por cada tarjeta) — eso
+    // ya estaba bien. El problema real (ver diagnóstico) era que un solo
+    // blip de red transitorio en ESA única llamada dejaba el caché
+    // correspondiente pegado en [] por el resto de la sesión, sin
+    // reintento — casi invisible en localhost (nunca falla), muy visible
+    // en Producción. fetchJsonConReintento() reintenta con backoff DENTRO
+    // de la carga inicial; si aun así no entra, cargarUsuarios()/
+    // cargarMetodos() quedan reintentando solas en segundo plano cada 5s
+    // hasta que el catálogo entre, y entonces re-renderizan el tablero
+    // para que el select deje de estar vacío sin que nadie recargue nada.
+    async function fetchJsonConReintento(url, intentos = 3, esperaBaseMs = 500){
+        let ultimoError;
+        for(let intento = 1; intento <= intentos; intento++){
+            try {
+                const resp = await fetch(url);
+                return await resp.json();
+            } catch(e) {
+                ultimoError = e;
+                if(intento < intentos){
+                    await new Promise(r => setTimeout(r, esperaBaseMs * intento));
+                }
+            }
+        }
+        throw ultimoError;
+    }
+
+    let reintentoUsuariosActivo = false;
+    let reintentoMetodosActivo = false;
+
+    async function intentarCargarUsuarios(){
         try {
-            const resp = await fetch(API_BASE+'usuarios_listar.php?activos=1');
-            const data = await resp.json();
-            if(data.ok) usuariosCache = data.usuarios;
+            const data = await fetchJsonConReintento(API_BASE+'usuarios_listar.php?activos=1');
+            if(data.ok){
+                usuariosCache = data.usuarios;
+            } else {
+                console.error('[cargarUsuarios] respuesta no ok:', data.error || data);
+            }
         } catch(e) {
-            // Silencioso: el select de responsable quedará vacío, pero el
-            // tablero sigue siendo usable (ver pedidos, imprimir etiqueta).
+            console.error('[cargarUsuarios] fetch falló tras reintentos:', e);
         }
     }
-    async function cargarMetodos(){
+    async function cargarUsuarios(){
+        await intentarCargarUsuarios();
+        if(usuariosCache.length === 0 && !reintentoUsuariosActivo){
+            reintentoUsuariosActivo = true;
+            toast('⚠️ No se pudieron cargar los responsables — reintentando en segundo plano…');
+            let intentoEnCurso = false;
+            const intervalo = setInterval(async () => {
+                // Si un intento tarda más que el intervalo (red muy lenta),
+                // evita que dos intentos se pisen y disparen el toast/render
+                // de éxito dos veces.
+                if(intentoEnCurso) return;
+                intentoEnCurso = true;
+                await intentarCargarUsuarios();
+                intentoEnCurso = false;
+                if(usuariosCache.length > 0){
+                    clearInterval(intervalo);
+                    reintentoUsuariosActivo = false;
+                    toast('✅ Responsables cargados');
+                    renderKDS();
+                }
+            }, 5000);
+        }
+    }
+
+    async function intentarCargarMetodos(){
         try {
-            const resp = await fetch(API_BASE+'metodos_listar.php');
-            const data = await resp.json();
+            const data = await fetchJsonConReintento(API_BASE+'metodos_listar.php');
             if(data.ok){
                 metodosCache = data.metodos;
             } else {
                 console.error('[cargarMetodos] respuesta no ok:', data.error || data);
             }
         } catch(e) {
-            // No es silencioso a propósito: si un pedido necesita el select
-            // de método y esto falló, avanzarConResponsable() lo va a
-            // rechazar con un toast claro, pero el error real (fetch caído,
-            // JSON inválido, etc.) queda en consola para poder diagnosticarlo.
-            console.error('[cargarMetodos] fetch falló:', e);
+            console.error('[cargarMetodos] fetch falló tras reintentos:', e);
+        }
+    }
+    async function cargarMetodos(){
+        await intentarCargarMetodos();
+        if(metodosCache.length === 0 && !reintentoMetodosActivo){
+            reintentoMetodosActivo = true;
+            toast('⚠️ No se pudieron cargar los métodos de despacho — reintentando en segundo plano…');
+            let intentoEnCurso = false;
+            const intervalo = setInterval(async () => {
+                if(intentoEnCurso) return;
+                intentoEnCurso = true;
+                await intentarCargarMetodos();
+                intentoEnCurso = false;
+                if(metodosCache.length > 0){
+                    clearInterval(intervalo);
+                    reintentoMetodosActivo = false;
+                    toast('✅ Métodos de despacho cargados');
+                    renderKDS();
+                }
+            }, 5000);
         }
     }
 
