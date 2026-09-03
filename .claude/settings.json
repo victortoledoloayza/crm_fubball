@@ -12,7 +12,13 @@
       "Bash(php -r ' *)",
       "Bash(php -l *)",
       "Bash(node --check *)",
-      "Bash(python3 -m json.tool /Applications/XAMPP/xamppfiles/htdocs/fubball_kds/.claude/settings.local.json)"
+      "Bash(python3 -m json.tool /Applications/XAMPP/xamppfiles/htdocs/fubball_kds/.claude/settings.local.json)",
+      "Bash(/Applications/XAMPP/xamppfiles/bin/php /tmp/test_array_parse.php)",
+      "Bash(python3 -c \"import sys,urllib.parse; print\\(urllib.parse.unquote\\(sys.stdin.read\\(\\)\\)\\)\")",
+      "Bash(/Applications/XAMPP/xamppfiles/bin/php -l /Applications/XAMPP/xamppfiles/htdocs/fubball_kds/pedidos_nuevo.php)",
+      "Bash(/Applications/XAMPP/xamppfiles/bin/php -l /Applications/XAMPP/xamppfiles/htdocs/fubball_kds/api/pedidos_crear.php)",
+      "Bash(/Applications/XAMPP/xamppfiles/bin/mysql -h127.0.0.1 -uroot fubball_kds -e ' *)",
+      "Bash(curl -s -b /tmp/cookies.txt http://127.0.0.1:8099/pedidos_nuevo.php -o /tmp/render_check.html -w \"HTTP:%{http_code}\\\\n\")"
     ]
   }
 }

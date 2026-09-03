@@ -158,11 +158,11 @@ require __DIR__ . '/core/ui/layout_header.php';
 
     <template id="plantillaItem">
         <div class="item-row">
-            <input type="text" name="items[][producto_nombre]" placeholder="Producto" required>
-            <input type="text" name="items[][variante]" placeholder="Variante (talla, color…)">
-            <input type="text" name="items[][sku]" placeholder="SKU">
-            <input type="number" name="items[][cantidad]" placeholder="Cant." min="1" value="1" required>
-            <input type="number" name="items[][precio_unitario]" placeholder="Precio" min="0" step="0.01" required>
+            <input type="text" name="items[][producto_nombre]" data-field="producto_nombre" placeholder="Producto" required>
+            <input type="text" name="items[][variante]" data-field="variante" placeholder="Variante (talla, color…)">
+            <input type="text" name="items[][sku]" data-field="sku" placeholder="SKU">
+            <input type="number" name="items[][cantidad]" data-field="cantidad" placeholder="Cant." min="1" value="1" required>
+            <input type="number" name="items[][precio_unitario]" data-field="precio_unitario" placeholder="Precio" min="0" step="0.01" required>
             <button type="button" class="quitar-item">Quitar</button>
         </div>
     </template>
@@ -171,17 +171,33 @@ require __DIR__ . '/core/ui/layout_header.php';
         const contenedor = document.getElementById('itemsContenedor');
         const plantilla = document.getElementById('plantillaItem');
 
+        // Cada fila necesita su propio índice en name="items[N][campo]" — el
+        // <template> trae "items[][campo]" (corchetes vacíos) sin índice.
+        // PHP arma $_POST['items'] agrupando por posición de "items[]", así
+        // que sin este paso cada CAMPO (no cada fila) termina como un
+        // elemento suelto del array (bug real: 5 campos x N filas = 5N
+        // "productos" vacíos en vez de N productos completos). El contador
+        // nunca se reutiliza aunque se borren filas, para que dos filas
+        // nunca puedan compartir índice.
+        let proximoIndiceItem = 0;
+
         // prefill (opcional): {producto_nombre, sku, cantidad, precio_unitario}
         // — viene del PDF de TSI cuando se llama desde ahí; en el alta manual
         // normal se llama sin argumento y la fila queda vacía como siempre.
         function agregarFilaProducto(prefill) {
             const fragmento = plantilla.content.cloneNode(true);
             const fila = fragmento.querySelector('.item-row');
+
+            const indice = proximoIndiceItem++;
+            fila.querySelectorAll('[name^="items[]"]').forEach(input => {
+                input.name = input.name.replace('items[]', 'items[' + indice + ']');
+            });
+
             if (prefill) {
-                fila.querySelector('[name="items[][producto_nombre]"]').value = prefill.producto_nombre || '';
-                fila.querySelector('[name="items[][sku]"]').value = prefill.sku || '';
-                fila.querySelector('[name="items[][cantidad]"]').value = prefill.cantidad || 1;
-                fila.querySelector('[name="items[][precio_unitario]"]').value = (prefill.precio_unitario !== undefined && prefill.precio_unitario !== null) ? prefill.precio_unitario : '';
+                fila.querySelector('[data-field="producto_nombre"]').value = prefill.producto_nombre || '';
+                fila.querySelector('[data-field="sku"]').value = prefill.sku || '';
+                fila.querySelector('[data-field="cantidad"]').value = prefill.cantidad || 1;
+                fila.querySelector('[data-field="precio_unitario"]').value = (prefill.precio_unitario !== undefined && prefill.precio_unitario !== null) ? prefill.precio_unitario : '';
             }
             fila.querySelector('.quitar-item').addEventListener('click', () => {
                 if (contenedor.children.length > 1) {
@@ -269,6 +285,7 @@ require __DIR__ . '/core/ui/layout_header.php';
 
                 if (c.items && c.items.length) {
                     contenedor.innerHTML = '';
+                    proximoIndiceItem = 0; // reindexar desde 0 — las filas viejas ya no existen
                     c.items.forEach(item => agregarFilaProducto(item));
                 }
 
