@@ -21,7 +21,8 @@ foreach ($canales as $c) {
     $channelMetaPhp[$c['codigo']] = ['label' => $c['nombre'], 'color' => $c['color_hex']];
 }
 
-$mensajeExito = ($_GET['ok'] ?? '') === 'creado' ? 'Pedido creado correctamente.' : '';
+$mensajesExito = ['creado' => 'Pedido creado correctamente.', 'editado' => 'Pedido actualizado correctamente.'];
+$mensajeExito = $mensajesExito[$_GET['ok'] ?? ''] ?? '';
 
 $tituloPagina = 'Tablero KDS';
 $navActiva    = 'tablero';
@@ -75,8 +76,8 @@ require __DIR__ . '/core/ui/layout_header.php';
         .ticket-id { font-size: .7rem; color: var(--text-muted); font-weight: 700; white-space: nowrap; text-decoration: none; border-bottom: 1px dashed var(--text-muted); }
         .ticket-id:hover { color: var(--text); border-bottom-color: var(--text); }
         .ticket-top-right { display: flex; align-items: center; gap: 8px; }
-        .btn-delete-icon { background: none; border: none; padding: 2px 4px; font-size: .8rem; line-height: 1; cursor: pointer; opacity: .5; }
-        .btn-delete-icon:hover { opacity: 1; }
+        .btn-delete-icon, .btn-edit-icon { background: none; border: none; padding: 2px 4px; font-size: .8rem; line-height: 1; cursor: pointer; opacity: .5; }
+        .btn-delete-icon:hover, .btn-edit-icon:hover { opacity: 1; }
 
         .ticket-product-row { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 9px; }
         .ticket-product-info { flex: 1; min-width: 0; }
@@ -214,6 +215,7 @@ require __DIR__ . '/core/ui/layout_header.php';
     <script>
     /* ---------- CONFIG (inyectada desde PHP) ---------- */
     const API_BASE = <?= json_encode(baseUrl('api/'), JSON_UNESCAPED_SLASHES) ?>;
+    const SITE_BASE = <?= json_encode(baseUrl('/'), JSON_UNESCAPED_SLASHES) ?>;
     const CSRF_TOKEN = <?= json_encode(csrfToken()) ?>;
     // Controla si se pinta el botón "Eliminar" en las tarjetas — el
     // servidor SIEMPRE vuelve a validar el rol en api/pedidos_eliminar.php,
@@ -491,11 +493,14 @@ require __DIR__ . '/core/ui/layout_header.php';
         const botonRegresar = o.status !== 'nuevo'
             ? '<button class="btn btn-outline" onclick="regresarFase('+o.id+',\''+o.status+'\')">← Regresar</button>'
             : '';
-        // El botón de eliminar solo se pinta para admin (ES_ADMIN, inyectado
+        // Editar y eliminar solo se pintan para admin (ES_ADMIN, inyectado
         // desde PHP) — el servidor vuelve a validar el rol en
-        // api/pedidos_eliminar.php de todas formas.
+        // api/pedidos_editar.php / api/pedidos_eliminar.php de todas formas.
+        const botonEditar = ES_ADMIN
+            ? '<a class="btn-edit-icon" href="'+SITE_BASE+'pedidos_editar.php?id='+o.id+'" title="Editar pedido">✏️</a>'
+            : '';
         const botonEliminar = ES_ADMIN
-            ? '<button class="btn-delete-icon" onclick="eliminarPedido('+o.id+')" title="Eliminar pedido">🗑️ Eliminar</button>'
+            ? '<button class="btn-delete-icon" onclick="eliminarPedido('+o.id+')" title="Eliminar pedido">🗑️</button>'
             : '';
         return ''+
         '<div class="ticket">'+
@@ -503,7 +508,7 @@ require __DIR__ . '/core/ui/layout_header.php';
             '<div class="ticket-body">'+
                 '<div class="ticket-top">'+
                     '<span class="channel-badge" style="background:'+meta.color+'">'+escapeHtml(meta.label)+'</span>'+
-                    '<div class="ticket-top-right">'+enlaceOrden+botonEliminar+'</div>'+
+                    '<div class="ticket-top-right">'+enlaceOrden+botonEditar+botonEliminar+'</div>'+
                 '</div>'+
                 itemsSectionHTML(o)+
                 (o.flag==='pago' ? '<div class="ticket-flag">⚠️ Verificar pago antes de despachar</div>' : '')+

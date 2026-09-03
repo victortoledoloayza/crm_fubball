@@ -272,6 +272,162 @@ class PedidoRepository
         }
     }
 
+    // Campos editables desde pedidos_editar.php y su tipo, usado tanto para
+    // armar el UPDATE como para detectar qué cambió (ver compararValor()).
+    // codigo_orden, estado, origen y las columnas de responsable/timestamps
+    // de fase quedan afuera a propósito — esos los maneja el flujo normal
+    // (avanzar/retroceder fase, marcarDespachado, etc.), no la edición.
+    private const CAMPOS_EDITABLES = [
+        'canal_id'                => 'int',
+        'cliente_nombre'          => 'str',
+        'cliente_dni'             => 'str',
+        'cliente_telefono'        => 'str',
+        'cliente_email'           => 'str',
+        'cliente_direccion'       => 'str',
+        'costo_envio'             => 'float',
+        'moneda'                  => 'str',
+        'fecha_limite'            => 'str',
+        'metodo_despacho_id'      => 'int',
+        'requiere_verificar_pago' => 'int',
+    ];
+
+    // Actualiza los datos editables de un pedido existente + reemplaza sus
+    // items (borra e inserta de nuevo — más simple y confiable que
+    // diffear altas/bajas/cambios fila por fila). monto_total SIEMPRE se
+    // recalcula acá desde los items nuevos, nunca se confía el que venga
+    // del cliente. No toca estado/codigo_orden/etiqueta_pdf_url/origen ni
+    // las columnas de responsable — eso es responsabilidad del flujo de
+    // fases, no de la edición.
+    //
+    // $datos: mismas claves que necesita crear() para canal_id..items,
+    // más 'costo_envio' y 'moneda' (ya validados por el caller).
+    public static function actualizar(int $pedidoId, array $datos, int $usuarioQueEjecutaId): void
+    {
+        $pdo = Database::getConnection();
+        $pdo->beginTransaction();
+
+        try {
+            $stmt = $pdo->prepare('SELECT * FROM pedidos WHERE id = ? FOR UPDATE');
+            $stmt->execute([$pedidoId]);
+            $anterior = $stmt->fetch();
+
+            if ($anterior === false) {
+                throw new PedidoTransicionInvalidaException("El pedido #{$pedidoId} no existe.");
+            }
+
+            if (in_array($anterior['estado'], ['facturado', 'cancelado'], true)) {
+                throw new PedidoTransicionInvalidaException(
+                    "El pedido está en estado '{$anterior['estado']}' y ya no se puede editar."
+                );
+            }
+
+            $montoTotal = array_reduce(
+                $datos['items'],
+                fn (float $acc, array $item): float => $acc + ((float) $item['precio_unitario'] * (int) $item['cantidad']),
+                0.0
+            );
+
+            $valoresNuevos = [
+                'canal_id'                => $datos['canal_id'],
+                'cliente_nombre'          => $datos['cliente_nombre'],
+                'cliente_dni'             => $datos['cliente_dni'] ?: null,
+                'cliente_telefono'        => $datos['cliente_telefono'] ?: null,
+                'cliente_email'           => $datos['cliente_email'] ?: null,
+                'cliente_direccion'       => $datos['cliente_direccion'] ?: null,
+                'costo_envio'             => $datos['costo_envio'],
+                'moneda'                  => $datos['moneda'],
+                'fecha_limite'            => $datos['fecha_limite'],
+                'metodo_despacho_id'      => $datos['metodo_despacho_id'] ?: null,
+                'requiere_verificar_pago' => $datos['requiere_verificar_pago'] ? 1 : 0,
+            ];
+
+            $set = implode(', ', array_map(fn (string $campo): string => "{$campo} = ?", array_keys($valoresNuevos)));
+            $stmtUpdate = $pdo->prepare("UPDATE pedidos SET monto_total = ?, {$set} WHERE id = ?");
+            $stmtUpdate->execute([$montoTotal, ...array_values($valoresNuevos), $pedidoId]);
+
+            $stmtItemsAnteriores = $pdo->prepare(
+                'SELECT producto_nombre, variante, sku, cantidad, precio_unitario FROM pedido_items WHERE pedido_id = ? ORDER BY id'
+            );
+            $stmtItemsAnteriores->execute([$pedidoId]);
+            $itemsAnteriores = $stmtItemsAnteriores->fetchAll();
+
+            $pdo->prepare('DELETE FROM pedido_items WHERE pedido_id = ?')->execute([$pedidoId]);
+            $stmtItem = $pdo->prepare(
+                'INSERT INTO pedido_items (pedido_id, producto_nombre, variante, sku, cantidad, precio_unitario, imagen_url)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)'
+            );
+            foreach ($datos['items'] as $item) {
+                $stmtItem->execute([
+                    $pedidoId,
+                    $item['producto_nombre'],
+                    $item['variante'] ?: null,
+                    $item['sku'] ?: null,
+                    $item['cantidad'],
+                    $item['precio_unitario'],
+                    $item['imagen_url'] ?? null,
+                ]);
+            }
+
+            $nota = self::describirCambios($anterior, $valoresNuevos, $itemsAnteriores, $datos['items']);
+
+            $stmtEvento = $pdo->prepare(
+                'INSERT INTO pedido_eventos (pedido_id, usuario_id, estado_anterior, estado_nuevo, nota)
+                 VALUES (?, ?, ?, ?, ?)'
+            );
+            // Editar no cambia de fase — estado_anterior y estado_nuevo
+            // quedan iguales, el evento solo deja constancia de la edición.
+            $stmtEvento->execute([$pedidoId, $usuarioQueEjecutaId, $anterior['estado'], $anterior['estado'], $nota]);
+
+            $pdo->commit();
+        } catch (Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+    }
+
+    // "Editado: cliente_direccion, costo_envio, 3 items modificados" — solo
+    // lista QUÉ cambió, no los valores antes/después (alcanza para
+    // auditoría rápida sin inflar pedido_eventos.nota).
+    private static function describirCambios(array $anterior, array $nuevos, array $itemsAnteriores, array $itemsNuevos): string
+    {
+        $cambios = [];
+        foreach (self::CAMPOS_EDITABLES as $campo => $tipo) {
+            if (self::valorCambio($anterior[$campo] ?? null, $nuevos[$campo] ?? null, $tipo)) {
+                $cambios[] = $campo;
+            }
+        }
+
+        $firmarItems = static function (array $filas): string {
+            $normalizadas = array_map(
+                fn (array $it): string => implode('~', [
+                    (string) ($it['producto_nombre'] ?? ''),
+                    (string) ($it['variante'] ?? ''),
+                    (string) ($it['sku'] ?? ''),
+                    (string) ($it['cantidad'] ?? ''),
+                    number_format((float) ($it['precio_unitario'] ?? 0), 2, '.', ''),
+                ]),
+                $filas
+            );
+
+            return implode('|', $normalizadas);
+        };
+
+        if ($firmarItems($itemsAnteriores) !== $firmarItems($itemsNuevos)) {
+            $cambios[] = count($itemsNuevos) . ' items modificados';
+        }
+
+        return 'Editado: ' . (empty($cambios) ? 'sin cambios detectados' : implode(', ', $cambios));
+    }
+
+    private static function valorCambio($anterior, $nuevo, string $tipo): bool
+    {
+        return match ($tipo) {
+            'int' => (int) $anterior !== (int) $nuevo,
+            'float' => round((float) $anterior, 2) !== round((float) $nuevo, 2),
+            default => (string) ($anterior ?? '') !== (string) ($nuevo ?? ''),
+        };
+    }
+
     // Códigos de orden reales (marketplaces) llegan en Fase 7 vía
     // integración. Mientras tanto, los pedidos cargados a mano se marcan
     // con un prefijo MANUAL- explícito para que nunca se puedan confundir
