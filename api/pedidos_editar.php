@@ -84,10 +84,12 @@ if ($fechaLimite === '') {
 }
 
 $items = [];
-foreach ($itemsPost as $item) {
+foreach ($itemsPost as $index => $item) {
+    $numeroFila = $index + 1;
     $producto = trim($item['producto_nombre'] ?? '');
     $cantidad = filter_var($item['cantidad'] ?? null, FILTER_VALIDATE_INT);
     $precio = filter_var($item['precio_unitario'] ?? null, FILTER_VALIDATE_FLOAT);
+    $imagenUrl = trim($item['imagen_url'] ?? '');
 
     // Filas vacías (el usuario agregó una fila de más y no la llenó) se
     // ignoran en vez de rechazar todo el formulario.
@@ -100,12 +102,20 @@ foreach ($itemsPost as $item) {
         continue;
     }
 
+    // Solo valida FORMATO de URL — no hace una llamada de red para
+    // comprobar que la imagen realmente cargue.
+    if ($imagenUrl !== '' && filter_var($imagenUrl, FILTER_VALIDATE_URL) === false) {
+        $errores[] = "La URL de imagen del producto {$numeroFila} no es válida.";
+        continue;
+    }
+
     $items[] = [
         'producto_nombre' => $producto,
         'variante'        => trim($item['variante'] ?? ''),
         'sku'              => trim($item['sku'] ?? ''),
         'cantidad'         => $cantidad,
         'precio_unitario'  => $precio,
+        'imagen_url'       => $imagenUrl !== '' ? $imagenUrl : null,
     ];
 }
 

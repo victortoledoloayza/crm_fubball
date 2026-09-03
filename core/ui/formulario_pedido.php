@@ -36,7 +36,7 @@
         .checkbox-row label { margin: 0; }
 
         .items-titulo { font-weight: 700; font-size: 14px; margin: 22px 0 10px; }
-        .item-row { display: grid; grid-template-columns: 2fr 1.4fr 1fr 0.7fr 0.9fr auto; gap: 8px; align-items: start; margin-bottom: 8px; }
+        .item-row { display: grid; grid-template-columns: 2fr 1.4fr 1fr 0.7fr 0.9fr 1.6fr auto; gap: 8px; align-items: start; margin-bottom: 8px; }
         @media (max-width: 760px) { .item-row { grid-template-columns: 1fr; } }
         .item-row input { margin-bottom: 0; }
         .item-row .quitar-item { background: #fdecec; color: #a3231a; border: none; border-radius: 6px; padding: 9px 10px; font-size: 12px; font-weight: 700; cursor: pointer; }
@@ -181,6 +181,7 @@
             <input type="text" name="items[][sku]" data-field="sku" placeholder="SKU">
             <input type="number" name="items[][cantidad]" data-field="cantidad" placeholder="Cant." min="1" value="1" required>
             <input type="number" name="items[][precio_unitario]" data-field="precio_unitario" placeholder="Precio" min="0" step="0.01" required>
+            <input type="url" name="items[][imagen_url]" data-field="imagen_url" placeholder="URL de imagen (opcional)">
             <button type="button" class="quitar-item">Quitar</button>
         </div>
     </template>
@@ -218,6 +219,10 @@
                 fila.querySelector('[data-field="sku"]').value = prefill.sku || '';
                 fila.querySelector('[data-field="cantidad"]').value = prefill.cantidad || 1;
                 fila.querySelector('[data-field="precio_unitario"]').value = (prefill.precio_unitario !== undefined && prefill.precio_unitario !== null) ? prefill.precio_unitario : '';
+                // Las Órdenes TSI no traen imagen — si prefill viene del PDF
+                // (sin la clave imagen_url) esto simplemente queda vacío,
+                // nunca se inventa una URL.
+                fila.querySelector('[data-field="imagen_url"]').value = prefill.imagen_url || '';
             }
             fila.querySelector('.quitar-item').addEventListener('click', () => {
                 if (contenedor.children.length > 1) {
@@ -236,6 +241,7 @@
                 'sku'             => $it['sku'],
                 'cantidad'        => (int) $it['cantidad'],
                 'precio_unitario' => (float) $it['precio_unitario'],
+                'imagen_url'      => $it['imagen_url'],
             ], $pedidoEnEdicion['items']), JSON_UNESCAPED_UNICODE) ?>;
             itemsExistentes.forEach(item => agregarFilaProducto(item));
         <?php else: ?>

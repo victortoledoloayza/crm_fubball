@@ -346,7 +346,7 @@ class PedidoRepository
             $stmtUpdate->execute([$montoTotal, ...array_values($valoresNuevos), $pedidoId]);
 
             $stmtItemsAnteriores = $pdo->prepare(
-                'SELECT producto_nombre, variante, sku, cantidad, precio_unitario FROM pedido_items WHERE pedido_id = ? ORDER BY id'
+                'SELECT producto_nombre, variante, sku, cantidad, precio_unitario, imagen_url FROM pedido_items WHERE pedido_id = ? ORDER BY id'
             );
             $stmtItemsAnteriores->execute([$pedidoId]);
             $itemsAnteriores = $stmtItemsAnteriores->fetchAll();
@@ -405,6 +405,7 @@ class PedidoRepository
                     (string) ($it['sku'] ?? ''),
                     (string) ($it['cantidad'] ?? ''),
                     number_format((float) ($it['precio_unitario'] ?? 0), 2, '.', ''),
+                    (string) ($it['imagen_url'] ?? ''),
                 ]),
                 $filas
             );
