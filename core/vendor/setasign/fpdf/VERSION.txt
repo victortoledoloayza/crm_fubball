@@ -1,0 +1,1 @@
+v1.9 - https://github.com/Setasign/FPDF (vendored manually, single-file, MIT license, no Composer needed at runtime)

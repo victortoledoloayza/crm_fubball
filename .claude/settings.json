@@ -18,7 +18,14 @@
       "Bash(/Applications/XAMPP/xamppfiles/bin/php -l /Applications/XAMPP/xamppfiles/htdocs/fubball_kds/pedidos_nuevo.php)",
       "Bash(/Applications/XAMPP/xamppfiles/bin/php -l /Applications/XAMPP/xamppfiles/htdocs/fubball_kds/api/pedidos_crear.php)",
       "Bash(/Applications/XAMPP/xamppfiles/bin/mysql -h127.0.0.1 -uroot fubball_kds -e ' *)",
-      "Bash(curl -s -b /tmp/cookies.txt http://127.0.0.1:8099/pedidos_nuevo.php -o /tmp/render_check.html -w \"HTTP:%{http_code}\\\\n\")"
+      "Bash(curl -s -b /tmp/cookies.txt http://127.0.0.1:8099/pedidos_nuevo.php -o /tmp/render_check.html -w \"HTTP:%{http_code}\\\\n\")",
+      "Bash(grep -i -E \"^gd$|^zlib$|^mbstring$\")",
+      "Bash(python3 -c \"import pyzbar\")",
+      "Bash(python3 -c \"import cv2\")",
+      "Bash(python3 -c \"from pyzbar.pyzbar import decode\")",
+      "Bash(pip3 list *)",
+      "Bash(pip3 install *)",
+      "Bash(python3 -c ' *)"
     ]
   }
 }

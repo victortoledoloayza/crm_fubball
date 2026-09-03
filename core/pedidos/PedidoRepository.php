@@ -83,11 +83,13 @@ class PedidoRepository
         $stmt = $pdo->prepare(
             'SELECT p.*,
                     c.codigo AS canal_codigo, c.nombre AS canal_nombre, c.color_hex AS canal_color,
+                    md.nombre AS metodo_nombre,
                     ue.nombre AS resp_embalaje_nombre,
                     uv.nombre AS resp_verificacion_nombre,
                     ud.nombre AS resp_despacho_nombre
              FROM pedidos p
              INNER JOIN canales c ON c.id = p.canal_id
+             LEFT JOIN metodos_despacho md ON md.id = p.metodo_despacho_id
              LEFT JOIN usuarios ue ON ue.id = p.responsable_embalaje_id
              LEFT JOIN usuarios uv ON uv.id = p.responsable_verificacion_id
              LEFT JOIN usuarios ud ON ud.id = p.responsable_despacho_id

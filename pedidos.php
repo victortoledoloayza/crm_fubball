@@ -238,6 +238,11 @@ require __DIR__ . '/core/ui/layout_header.php';
         verificacion: {next:'despacho',     key:'despacho',     label:'✅ Enviar a Despacho', selectLabel:'Responsable de despacho'}
     };
 
+    // Canales que no traen etiqueta propia del marketplace — ver
+    // ticketCardHTML() y api/pedido_generar_etiqueta.php (misma lista en
+    // ambos lados; el backend es quien realmente la hace cumplir).
+    const CANALES_ETIQUETA_AUTO = ['TSI', 'SHOPIFY', 'WHATSAPP'];
+
     /* ---------- HELPERS ---------- */
     function escapeHtml(str){
         if(str===null || str===undefined) return '';
@@ -370,6 +375,7 @@ require __DIR__ . '/core/ui/layout_header.php';
             id: row.id,
             codigoOrden: row.codigo_orden,
             channel: row.canal_codigo,
+            origen: row.origen,
             items: row.items.map(it => ({
                 product: it.producto_nombre,
                 variant: it.variante || '',
@@ -464,9 +470,22 @@ require __DIR__ . '/core/ui/layout_header.php';
             ? '<a class="ticket-id" href="'+o.etiquetaPdfUrl+'" target="_blank" rel="noopener" title="Ver / descargar etiqueta PDF">#'+codigoOrdenEsc+' 🔗</a>'
             : '<span class="ticket-id">#'+codigoOrdenEsc+'</span>';
         const necesitaMetodo = o.status === 'verificacion' && o.metodoDespachoId === null;
-        const botonEtiqueta = o.etiquetaPdfUrl
-            ? '<button class="btn btn-outline" onclick="imprimirEtiqueta('+o.id+')">🖨️ Etiqueta</button>'
-            : '<button class="btn btn-outline" onclick="elegirArchivoEtiqueta('+o.id+')">📎 Subir etiqueta PDF</button>';
+        // Canales que no traen etiqueta propia del marketplace (o cualquier
+        // alta manual, sin importar el canal) generan la suya — el resto
+        // (Falabella, Ripley, Intercorp salvo alta manual) la suben a mano.
+        // Mismo criterio que valida api/pedido_generar_etiqueta.php.
+        const elegibleEtiquetaAuto = CANALES_ETIQUETA_AUTO.includes(o.channel) || o.origen === 'manual';
+        let botonEtiqueta;
+        if(o.etiquetaPdfUrl){
+            botonEtiqueta = '<button class="btn btn-outline" onclick="imprimirEtiqueta('+o.id+')">🖨️ Etiqueta</button>';
+            if(elegibleEtiquetaAuto){
+                botonEtiqueta += '<button class="btn btn-outline" onclick="generarEtiqueta('+o.id+')" title="Vuelve a generar la etiqueta con los datos actuales del pedido">🔄 Regenerar</button>';
+            }
+        } else if(elegibleEtiquetaAuto){
+            botonEtiqueta = '<button class="btn btn-outline" onclick="generarEtiqueta('+o.id+')">🏷️ Generar etiqueta</button>';
+        } else {
+            botonEtiqueta = '<button class="btn btn-outline" onclick="elegirArchivoEtiqueta('+o.id+')">📎 Subir etiqueta PDF</button>';
+        }
         // "Nuevo" es el inicio del flujo — no tiene fase anterior a la que
         // regresar (ver TRANSICIONES_INVERSAS en PedidoRepository).
         const botonRegresar = o.status !== 'nuevo'
@@ -640,6 +659,28 @@ require __DIR__ . '/core/ui/layout_header.php';
             cargarPedidos();
         } catch(e) {
             toast('⚠️ Error de red al subir la etiqueta.');
+        }
+    }
+
+    // Genera la etiqueta propia en el servidor (canales sin etiqueta de
+    // marketplace, o cualquier alta manual) — mismo botón sirve para
+    // "Generar etiqueta" (primera vez) y "🔄 Regenerar" (ya existe una).
+    async function generarEtiqueta(id){
+        try {
+            const resp = await fetch(API_BASE+'pedido_generar_etiqueta.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({pedido_id: id, csrf_token: CSRF_TOKEN})
+            });
+            const data = await resp.json();
+            if(!data.ok){
+                toast('⚠️ '+(data.error||'No se pudo generar la etiqueta.'));
+                return;
+            }
+            toast('🏷️ Etiqueta generada correctamente');
+            cargarPedidos();
+        } catch(e) {
+            toast('⚠️ Error de red al generar la etiqueta.');
         }
     }
 
