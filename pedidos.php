@@ -109,7 +109,9 @@ require __DIR__ . '/core/ui/layout_header.php';
         .ticket-variant { color: var(--text-muted); font-size: .78rem; margin-bottom: 0; }
         .ticket-flag { display: inline-block; background: #fff2df; color: #9a6408; font-size: .68rem; font-weight: 800; padding: 3px 8px; border-radius: 6px; margin-bottom: 9px; }
         .resp-trail { font-size: .72rem; color: var(--text-muted); font-weight: 600; margin-bottom: 8px; }
-        .ticket-deadline { font-size: .76rem; font-weight: 800; display: flex; align-items: center; gap: 5px; margin-bottom: 10px; }
+        .ticket-deadline { font-size: .76rem; display: flex; align-items: center; gap: 5px; margin-bottom: 10px; }
+        .ticket-deadline strong { font-weight: 800; }
+        .ticket-deadline .deadline-detalle { font-weight: 500; font-size: .68rem; opacity: .82; }
         .ticket-deadline.green { color: var(--green); }
         .ticket-deadline.yellow { color: var(--yellow-text); }
         .ticket-deadline.red { color: var(--red); }
@@ -254,6 +256,32 @@ require __DIR__ . '/core/ui/layout_header.php';
         if(diffH>=24){const d=Math.floor(diffH/24); const h=Math.round(diffH-d*24); return d+'d '+h+'h';}
         const h=Math.floor(diffH); const m=Math.round((diffH-h)*60);
         return h>0 ? (h+'h '+m+'m') : (m+'m');
+    }
+    // "6:00 p.m." — 12h con a.m./p.m. en minúscula y puntos, sin depender
+    // de que el locale del navegador dé ese formato exacto.
+    function formatHora12(date){
+        let horas = date.getHours();
+        const minutos = String(date.getMinutes()).padStart(2, '0');
+        const ampm = horas >= 12 ? 'p.m.' : 'a.m.';
+        horas = horas % 12;
+        if(horas === 0) horas = 12;
+        return horas + ':' + minutos + ' ' + ampm;
+    }
+    // Antepone "mañana"/"ayer" o "DD/MM" cuando el vencimiento no es hoy —
+    // la tarjeta no muestra fecha, así que sin esto un pedido que venció
+    // ayer o vence pasado mañana se leería como si fuera hoy.
+    function formatHoraConFecha(date){
+        const ahora = new Date();
+        const diaDeadline = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const diaHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+        const diffDias = Math.round((diaDeadline - diaHoy) / 86400000);
+        const hora = formatHora12(date);
+        if(diffDias === 0) return hora;
+        if(diffDias === 1) return 'mañana ' + hora;
+        if(diffDias === -1) return 'ayer ' + hora;
+        const dd = String(date.getDate()).padStart(2, '0');
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        return dd + '/' + mm + ' ' + hora;
     }
     // El semáforo SLA se calcula 100% en el navegador, contra la hora real
     // del cliente (new Date()) — ya no hay "hora simulada".
@@ -513,7 +541,7 @@ require __DIR__ . '/core/ui/layout_header.php';
                 itemsSectionHTML(o)+
                 (o.flag==='pago' ? '<div class="ticket-flag">⚠️ Verificar pago antes de despachar</div>' : '')+
                 responsablesResumenHTML(o)+
-                '<div class="ticket-deadline '+sla.level+'">⏰ '+sla.text+'</div>'+
+                '<div class="ticket-deadline '+sla.level+'">⏰ <strong>'+(sla.level==='red'?'venció ':'vence ')+formatHoraConFecha(o.deadline)+'</strong> <span class="deadline-detalle">('+(sla.level==='red'?'VENCIDO':sla.text)+')</span></div>'+
                 (necesitaMetodo ? '<div class="resp-select-row"><label class="resp-select-label">Método de despacho (pendiente de confirmar)</label>'+metodoSelectHTML(o)+'</div>' : '')+
                 (fase ? (
                     '<div class="resp-select-row"><label class="resp-select-label">'+fase.selectLabel+'</label>'+employeeSelectHTML(o, fase.key)+'</div>'+
